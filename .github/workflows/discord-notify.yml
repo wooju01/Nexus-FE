@@ -20,15 +20,63 @@ jobs:
           AUTHOR="${{ github.actor }}"
           COMMIT_URL="${{ github.event.head_commit.url }}"
           REPO="${{ github.repository }}"
+          AVATAR="https://github.com/${{ github.actor }}.png"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          ADDED=${{ github.event.head_commit.added && toJSON(github.event.head_commit.added) || '[]' }}
+          MODIFIED=${{ github.event.head_commit.modified && toJSON(github.event.head_commit.modified) || '[]' }}
+          REMOVED=${{ github.event.head_commit.removed && toJSON(github.event.head_commit.removed) || '[]' }}
+
+          ADDED_COUNT=$(echo "$ADDED" | jq 'length')
+          MODIFIED_COUNT=$(echo "$MODIFIED" | jq 'length')
+          REMOVED_COUNT=$(echo "$REMOVED" | jq 'length')
+
+          FILE_SUMMARY=""
+          [ "$ADDED_COUNT" -gt 0 ] && FILE_SUMMARY="${FILE_SUMMARY}추가 ${ADDED_COUNT}  "
+          [ "$MODIFIED_COUNT" -gt 0 ] && FILE_SUMMARY="${FILE_SUMMARY}수정 ${MODIFIED_COUNT}  "
+          [ "$REMOVED_COUNT" -gt 0 ] && FILE_SUMMARY="${FILE_SUMMARY}삭제 ${REMOVED_COUNT}"
+
+          if [ "$BRANCH" = "main" ]; then
+            COLOR=5763719    # 초록 — 프로덕션
+            BRANCH_LABEL="main"
+          else
+            COLOR=3447003    # 파랑 — 개발
+            BRANCH_LABEL="dev"
+          fi
 
           curl -s -H "Content-Type: application/json" \
             -d "{
               \"embeds\": [{
-                \"title\": \"Push: ${REPO} (${BRANCH})\",
-                \"description\": \"**${AUTHOR}**가 커밋을 푸시했습니다.\\n\\n\`${COMMIT_MSG}\`\",
+                \"author\": {
+                  \"name\": \"${AUTHOR}\",
+                  \"url\": \"https://github.com/${AUTHOR}\",
+                  \"icon_url\": \"${AVATAR}\"
+                },
+                \"title\": \"${COMMIT_MSG}\",
                 \"url\": \"${COMMIT_URL}\",
-                \"color\": 3447003,
-                \"footer\": { \"text\": \"${REPO}\" },
+                \"description\": \"\`${SHORT_SHA}\` on **${BRANCH_LABEL}** branch\",
+                \"color\": ${COLOR},
+                \"fields\": [
+                  {
+                    \"name\": \"Repository\",
+                    \"value\": \"[${REPO}](https://github.com/${REPO})\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Branch\",
+                    \"value\": \"\`${BRANCH_LABEL}\`\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Changes\",
+                    \"value\": \"${FILE_SUMMARY}\",
+                    \"inline\": true
+                  }
+                ],
+                \"footer\": {
+                  \"text\": \"Nexus Frontend\",
+                  \"icon_url\": \"https://github.githubassets.com/favicons/favicon-dark.svg\"
+                },
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
               }]
             }" \
@@ -42,40 +90,81 @@ jobs:
           ACTION="${{ github.event.action }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
           PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
           AUTHOR="${{ github.actor }}"
+          AVATAR="https://github.com/${{ github.actor }}.png"
           REPO="${{ github.repository }}"
           MERGED="${{ github.event.pull_request.merged }}"
+          HEAD="${{ github.event.pull_request.head.ref }}"
+          BASE="${{ github.event.pull_request.base.ref }}"
+          ADDITIONS="${{ github.event.pull_request.additions }}"
+          DELETIONS="${{ github.event.pull_request.deletions }}"
+          CHANGED="${{ github.event.pull_request.changed_files }}"
 
-          # action에 따라 라벨과 색상 지정
           case "$ACTION" in
             opened)
-              LABEL="PR 생성"
-              COLOR=5763719  # 초록
+              EMOJI="New"
+              LABEL="Pull Request 생성"
+              COLOR=5763719    # 초록
               ;;
             closed)
               if [ "$MERGED" = "true" ]; then
-                LABEL="PR 머지"
+                EMOJI="Merged"
+                LABEL="Pull Request 머지 완료"
                 COLOR=10181046  # 보라
               else
-                LABEL="PR 닫힘"
+                EMOJI="Closed"
+                LABEL="Pull Request 닫힘"
                 COLOR=15548997  # 빨강
               fi
               ;;
             reopened)
-              LABEL="PR 재오픈"
-              COLOR=16776960  # 노랑
+              EMOJI="Reopened"
+              LABEL="Pull Request 재오픈"
+              COLOR=16750899  # 주황
               ;;
           esac
+
+          # PR 본문 첫 100자만 추출 (줄바꿈 제거)
+          BODY_PREVIEW=$(echo "$PR_BODY" | tr '\n' ' ' | tr '\r' ' ' | cut -c1-100)
+          [ ${#PR_BODY} -gt 100 ] && BODY_PREVIEW="${BODY_PREVIEW}..."
+
+          DIFF_STAT="+${ADDITIONS} / -${DELETIONS}"
 
           curl -s -H "Content-Type: application/json" \
             -d "{
               \"embeds\": [{
-                \"title\": \"${LABEL}: #${PR_NUMBER} ${PR_TITLE}\",
-                \"description\": \"by **${AUTHOR}**\",
+                \"author\": {
+                  \"name\": \"${AUTHOR}\",
+                  \"url\": \"https://github.com/${AUTHOR}\",
+                  \"icon_url\": \"${AVATAR}\"
+                },
+                \"title\": \"#${PR_NUMBER}  ${PR_TITLE}\",
                 \"url\": \"${PR_URL}\",
+                \"description\": \"**${LABEL}**\\n\\n${BODY_PREVIEW}\",
                 \"color\": ${COLOR},
-                \"footer\": { \"text\": \"${REPO}\" },
+                \"fields\": [
+                  {
+                    \"name\": \"Branch\",
+                    \"value\": \"\`${HEAD}\` \u2192 \`${BASE}\`\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Diff\",
+                    \"value\": \"\`${DIFF_STAT}\` (${CHANGED} files)\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Status\",
+                    \"value\": \"${EMOJI}\",
+                    \"inline\": true
+                  }
+                ],
+                \"footer\": {
+                  \"text\": \"Nexus Frontend\",
+                  \"icon_url\": \"https://github.githubassets.com/favicons/favicon-dark.svg\"
+                },
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
               }]
             }" \
