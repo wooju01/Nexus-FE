@@ -1,0 +1,82 @@
+name: Discord 알림
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    types: [opened, closed, reopened]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Push 알림
+        if: github.event_name == 'push'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1)
+          BRANCH="${{ github.ref_name }}"
+          AUTHOR="${{ github.actor }}"
+          COMMIT_URL="${{ github.event.head_commit.url }}"
+          REPO="${{ github.repository }}"
+
+          curl -s -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"Push: ${REPO} (${BRANCH})\",
+                \"description\": \"**${AUTHOR}**가 커밋을 푸시했습니다.\\n\\n\`${COMMIT_MSG}\`\",
+                \"url\": \"${COMMIT_URL}\",
+                \"color\": 3447003,
+                \"footer\": { \"text\": \"${REPO}\" },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" \
+            "$DISCORD_WEBHOOK_URL"
+
+      - name: PR 알림
+        if: github.event_name == 'pull_request'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          ACTION="${{ github.event.action }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          MERGED="${{ github.event.pull_request.merged }}"
+
+          # action에 따라 라벨과 색상 지정
+          case "$ACTION" in
+            opened)
+              LABEL="PR 생성"
+              COLOR=5763719  # 초록
+              ;;
+            closed)
+              if [ "$MERGED" = "true" ]; then
+                LABEL="PR 머지"
+                COLOR=10181046  # 보라
+              else
+                LABEL="PR 닫힘"
+                COLOR=15548997  # 빨강
+              fi
+              ;;
+            reopened)
+              LABEL="PR 재오픈"
+              COLOR=16776960  # 노랑
+              ;;
+          esac
+
+          curl -s -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"${LABEL}: #${PR_NUMBER} ${PR_TITLE}\",
+                \"description\": \"by **${AUTHOR}**\",
+                \"url\": \"${PR_URL}\",
+                \"color\": ${COLOR},
+                \"footer\": { \"text\": \"${REPO}\" },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" \
+            "$DISCORD_WEBHOOK_URL"
