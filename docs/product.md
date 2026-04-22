@@ -220,7 +220,7 @@ Workspace (Aether Labs)
 ## 9. 팀 & 라이선스
 
 - **팀**: Aether Labs — Product, Design, Engineering
-- **코어 팀원 (스크린 기준)**: Jiwoo Park, Sora Kim, Minho Lee, Ethan Park, Hana Jeong, Yuna Choi
+- **코어 팀원 (스크린 기준)**: Sejun Yun, Sora Kim, Minho Lee, Ethan Park, Hana Jeong, Yuna Choi
 - **라이선스**: TBD (내부 전용 / 추후 결정)
 
 ---
