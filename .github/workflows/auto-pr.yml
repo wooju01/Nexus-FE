@@ -189,10 +189,67 @@ jobs:
           PR_BODY=$(echo "$PR_BODY" | sed 's/^          //')
 
           # ─── PR 생성 ───
-          gh pr create \
+          PR_URL=$(gh pr create \
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
             --base "$DEFAULT_BRANCH" \
-            --head "$BRANCH"
+            --head "$BRANCH" 2>&1)
 
           echo "PR이 성공적으로 생성되었습니다!"
+          echo "PR_URL=${PR_URL}" >> "$GITHUB_ENV"
+          echo "PR_TITLE=${PR_TITLE}" >> "$GITHUB_ENV"
+          echo "BRANCH=${BRANCH}" >> "$GITHUB_ENV"
+          echo "DEFAULT_BRANCH=${DEFAULT_BRANCH}" >> "$GITHUB_ENV"
+          echo "COMMIT_COUNT=${COMMIT_COUNT}" >> "$GITHUB_ENV"
+          echo "ADDITIONS=${ADDITIONS}" >> "$GITHUB_ENV"
+          echo "DELETIONS=${DELETIONS}" >> "$GITHUB_ENV"
+          echo "CHANGED_FILES=${CHANGED_FILES}" >> "$GITHUB_ENV"
+
+      - name: Discord PR 생성 알림
+        if: success() && env.PR_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          AUTHOR="${{ github.actor }}"
+          AVATAR="https://github.com/${{ github.actor }}.png"
+          REPO="${{ github.repository }}"
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          DIFF_STAT="+${ADDITIONS} / -${DELETIONS}"
+
+          curl -s -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"author\": {
+                  \"name\": \"${AUTHOR}\",
+                  \"url\": \"https://github.com/${AUTHOR}\",
+                  \"icon_url\": \"${AVATAR}\"
+                },
+                \"title\": \"#${PR_NUMBER}  ${PR_TITLE}\",
+                \"url\": \"${PR_URL}\",
+                \"description\": \"**Pull Request 자동 생성**\",
+                \"color\": 5763719,
+                \"fields\": [
+                  {
+                    \"name\": \"Branch\",
+                    \"value\": \"\`${BRANCH}\` → \`${DEFAULT_BRANCH}\`\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Diff\",
+                    \"value\": \"\`${DIFF_STAT}\` (${CHANGED_FILES} files)\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Commits\",
+                    \"value\": \"${COMMIT_COUNT}개\",
+                    \"inline\": true
+                  }
+                ],
+                \"footer\": {
+                  \"text\": \"Nexus Frontend\",
+                  \"icon_url\": \"https://github.githubassets.com/favicons/favicon-dark.svg\"
+                },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" \
+            "$DISCORD_WEBHOOK_URL"
