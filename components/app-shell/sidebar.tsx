@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import {
   CheckCircleIcon,
@@ -13,6 +14,7 @@ import {
   PlusIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
+import { InviteModal } from "@/features/invitation/invite-modal";
 import { CHANNELS } from "@/lib/mocks/channels";
 import { PROJECTS } from "@/lib/mocks/projects";
 import { getTasksAssignedTo } from "@/lib/mocks/tasks";
@@ -56,6 +58,7 @@ const DM_UNREAD: Record<string, number> = {
 export function Sidebar() {
   const pathname = usePathname();
   const { myTasks, inboxUnread } = getMyCounts();
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   // DM 목록은 현재 사용자 제외.
   const dmUsers = USERS.filter((u) => u.id !== CURRENT_USER_ID);
@@ -206,14 +209,19 @@ export function Sidebar() {
       <div className="border-t border-border-subtle p-3">
         <button
           type="button"
-          disabled
-          title="초대 — 준비 중"
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fg-secondary disabled:cursor-not-allowed hover:bg-surface-elevated hover:text-fg-primary"
+          onClick={() => setIsInviteModalOpen(true)}
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
         >
           <PeopleIcon className="size-4" />
           <span>Invite teammates</span>
         </button>
       </div>
+
+      <InviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        workspaceSlug="aether-labs"
+      />
     </aside>
   );
 }
