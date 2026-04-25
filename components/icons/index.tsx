@@ -314,3 +314,30 @@ export function EyeOffIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </IconBase>
+  );
+}
+
+export function SendIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="m22 2-11 11" />
+    </IconBase>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    </IconBase>
+  );
+}
