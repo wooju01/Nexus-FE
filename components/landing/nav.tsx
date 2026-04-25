@@ -21,8 +21,11 @@ export function LandingNav() {
 
         <ul className="hidden items-center gap-8 text-sm text-fg-secondary md:flex">
           <li>
-            <a href="#values" className="hover:text-fg-primary transition-colors">
-              핵심 가치
+            <a
+              href="#showcase"
+              className="hover:text-fg-primary transition-colors"
+            >
+              제품 둘러보기
             </a>
           </li>
           <li>
@@ -31,14 +34,6 @@ export function LandingNav() {
               className="hover:text-fg-primary transition-colors"
             >
               기능
-            </a>
-          </li>
-          <li>
-            <a
-              href="#roadmap"
-              className="hover:text-fg-primary transition-colors"
-            >
-              로드맵
             </a>
           </li>
         </ul>

@@ -9,12 +9,7 @@ import { Button } from "@/components/ui/button";
  */
 export function LandingHero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-[-200px] size-[640px] -translate-x-1/2 rounded-full bg-accent/20 blur-[160px]" />
-        <div className="absolute right-[-120px] top-[120px] size-[420px] rounded-full bg-brand-glow/15 blur-[140px]" />
-      </div>
-
+    <section>
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-20 lg:grid-cols-[1.05fr_1fr] lg:py-28">
         <div className="flex flex-col justify-center">
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-fg-primary sm:text-5xl lg:text-6xl">
