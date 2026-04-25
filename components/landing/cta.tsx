@@ -10,7 +10,7 @@ export function LandingCTA() {
           팀의 맥락을 한 홈으로 모으세요.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-base text-fg-secondary">
-          초기 10명까지 무료. 2분 안에 워크스페이스를 만들고 바로 첫 채널을 열
+          초기 10명까지 무료 — 2분 안에 워크스페이스를 만들고 바로 첫 채널을 열
           수 있습니다.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">

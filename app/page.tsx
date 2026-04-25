@@ -3,8 +3,7 @@ import { LandingFeatures } from "@/components/landing/features";
 import { LandingFooter } from "@/components/landing/footer";
 import { LandingHero } from "@/components/landing/hero";
 import { LandingNav } from "@/components/landing/nav";
-import { LandingRoadmap } from "@/components/landing/roadmap";
-import { LandingValues } from "@/components/landing/values";
+import { LandingShowcase } from "@/components/landing/showcase";
 
 /**
  * 마케팅 랜딩 페이지 (Server Component).
@@ -16,9 +15,8 @@ export default function HomePage() {
       <LandingNav />
       <main className="flex-1">
         <LandingHero />
-        <LandingValues />
+        <LandingShowcase />
         <LandingFeatures />
-        <LandingRoadmap />
         <LandingCTA />
       </main>
       <LandingFooter />
