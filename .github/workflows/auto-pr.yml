@@ -80,12 +80,12 @@ jobs:
             FILE_TABLE="${FILE_TABLE}| ... 외 $((CHANGED_FILES - 15))개 파일 | |\n"
           fi
 
-          # ─── PR 제목 ───
+          # ─── PR 제목 (한국어만, Conventional Commit prefix 제거) ───
           FIRST_COMMIT=$(git log "origin/${DEFAULT_BRANCH}..HEAD" --pretty=format:"%s" --reverse 2>/dev/null | head -1)
           if [ -n "$FIRST_COMMIT" ]; then
-            PR_TITLE="$FIRST_COMMIT"
+            PR_TITLE=$(echo "$FIRST_COMMIT" | sed 's/^[a-z]*([^)]*): //')
           else
-            PR_TITLE="${TYPE}(${SCOPE}): ${DESC}"
+            PR_TITLE="${DESC}"
           fi
 
           # ─── PR 본문 생성 ───
@@ -174,7 +174,7 @@ jobs:
 
           ## 체크리스트
 
-          - [ ] PR 제목이 \`type(scope): 설명 (NX-000)\` 형식을 따름
+          - [ ] PR 제목이 한국어로 작성됨
           - [ ] 자체 코드 리뷰 완료
           - [ ] 불필요한 console.log / debugger 제거
           - [ ] 새 의존성 추가 시 팀원과 논의 완료
