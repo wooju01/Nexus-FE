@@ -46,3 +46,17 @@ export async function refreshApi(refreshToken: string): Promise<AuthTokens> {
   });
   return handleResponse<AuthTokens>(res);
 }
+
+/** GET /auth/profile */
+export async function getProfileApi(accessToken: string) {
+  const res = await fetch(`${API_URL}/auth/profile`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<{
+    id: string;
+    email: string;
+    name: string;
+    avatar: string | null;
+    status: string;
+  }>(res);
+}

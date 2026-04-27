@@ -13,6 +13,7 @@ import { setTokens } from "@/lib/auth/tokens";
 
 import type { LoginInput, ValidationErrors } from "./validators";
 import { hasErrors, validateLogin } from "./validators";
+import { getWorkspacesApi } from "@/lib/api/workspace";
 
 export function LoginForm() {
   const router = useRouter();
@@ -38,11 +39,16 @@ export function LoginForm() {
     setServerError(null);
     try {
       const tokens = await loginApi(values.email, values.password);
+      const workspaces = await getWorkspacesApi(tokens.accessToken);
       setTokens(tokens.accessToken, tokens.refreshToken);
-      router.push("/login");
+      if (workspaces.length === 0) {
+        router.push("/profile");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err) {
       setServerError(
-        err instanceof Error ? err.message : "로그인에 실패했습니다."
+        err instanceof Error ? err.message : "로그인에 실패했습니다.",
       );
     } finally {
       setIsSubmitting(false);

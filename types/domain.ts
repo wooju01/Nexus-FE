@@ -24,7 +24,7 @@ export type TaskStatus =
   | "In review"
   | "Done";
 
-export type Presence = "online" | "offline";
+export type Presence = "online" | "away" | "dnd" | "offline";
 
 export type ProjectStatus = "Active" | "Archived";
 

@@ -1,4 +1,5 @@
-import { getCurrentUser } from "@/lib/mocks/users";
+"use client";
+import { useUser } from "@/features/auth/user-provider";
 
 /**
  * 간단한 시간대별 인사말 — 서버에서 번들되므로 비용 없음.
@@ -15,8 +16,9 @@ function greetingFor(now: Date): string {
  * Home 상단 인사말 + 짧은 상태 요약.
  */
 export function Greeting() {
-  const me = getCurrentUser();
-  const headline = `${greetingFor(new Date())}, ${me.name.split(" ")[0]}`;
+  const { user } = useUser();
+  const firstName = user?.name?.split(" ")[0] ?? "";
+  const headline = `${greetingFor(new Date())}, ${firstName}`;
 
   return (
     <section className="mb-6">

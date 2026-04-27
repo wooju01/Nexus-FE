@@ -36,6 +36,13 @@ const PRESENCE_DOT_SIZE: Record<AvatarSize, string> = {
   lg: "size-2.5",
 };
 
+const PRESENCE_DOT_COLOR: Partial<Record<Presence, string>> = {
+  online: "bg-presence-online", // 초록
+  away: "bg-amber-400", // 주황
+  dnd: "bg-priority-p1", // 빨강
+  // offline은 점 안 보임
+};
+
 /**
  * 이니셜 기반 아바타.
  * 이미지 업로드 도입 전까지는 컬러 + 이니셜만 사용.
@@ -61,12 +68,12 @@ export function Avatar({
       >
         {initials}
       </span>
-      {presence === "online" ? (
+      {presence && PRESENCE_DOT_COLOR[presence] ? (
         <span
-          aria-hidden="true"
           className={cn(
-            "absolute bottom-0 right-0 rounded-full border-2 border-surface-base bg-presence-online",
+            "absolute bottom-0 right-0 rounded-full border-2 border-surface-base",
             PRESENCE_DOT_SIZE[size],
+            PRESENCE_DOT_COLOR[presence],
           )}
         />
       ) : null}
