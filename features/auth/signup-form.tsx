@@ -48,7 +48,7 @@ export function SignupForm() {
     try {
       const tokens = await signupApi(values.name.trim(), values.email, values.password);
       setTokens(tokens.accessToken, tokens.refreshToken);
-      router.push("/dashboard");
+      router.push("/login");
     } catch (err) {
       setServerError(
         err instanceof Error ? err.message : "회원가입에 실패했습니다."

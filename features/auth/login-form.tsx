@@ -39,7 +39,7 @@ export function LoginForm() {
     try {
       const tokens = await loginApi(values.email, values.password);
       setTokens(tokens.accessToken, tokens.refreshToken);
-      router.push("/dashboard");
+      router.push("/login");
     } catch (err) {
       setServerError(
         err instanceof Error ? err.message : "로그인에 실패했습니다."
