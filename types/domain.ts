@@ -12,6 +12,8 @@ export type InboxItemId = string;
 export type MessageId = string;
 export type TaskCommentId = string;
 export type TaskActivityId = string;
+export type CalendarEventId = string;
+export type WorkspaceId = string;
 
 export type Priority = "P1" | "P2" | "P3";
 
@@ -185,4 +187,51 @@ export type TaskActivity = {
   actorId: UserId;
   description: string;
   timeLabel: string;
+};
+
+/**
+ * RSVP 상태 — BE Prisma `RsvpStatus` enum 과 1:1 일치.
+ * 대문자는 BE 응답과 동일하게 유지 (변환 비용 0, 디버깅 쉬움).
+ */
+export type RsvpStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "MAYBE";
+
+/**
+ * 캘린더 이벤트 참가자.
+ * BE 응답의 `participants[]` 와 1:1 일치 — `user` 는 join 결과.
+ */
+export type CalendarParticipant = {
+  userId: UserId;
+  status: RsvpStatus;
+  user: {
+    id: UserId;
+    name: string;
+    avatar: string | null;
+  };
+};
+
+/**
+ * 캘린더 이벤트.
+ *
+ * BE `CalendarEventResponse` (be/src/modules/calendar/dto/event-response.dto.ts) 와 1:1 매칭.
+ * 시각은 모두 ISO 8601 UTC 문자열. FE 에서 표시할 때 `new Date()` 로 파싱.
+ */
+export type CalendarEvent = {
+  id: CalendarEventId;
+  workspaceId: WorkspaceId;
+  createdById: UserId;
+  title: string;
+  description: string | null;
+  /** ISO 8601 UTC */
+  startAt: string;
+  /** ISO 8601 UTC */
+  endAt: string;
+  allDay: boolean;
+  location: string | null;
+  /** 자유 문자열 — FE 에서 알려진 토큰으로 매핑, unknown 은 fallback. */
+  color: string | null;
+  /** ISO 8601 */
+  createdAt: string;
+  /** ISO 8601 */
+  updatedAt: string;
+  participants: ReadonlyArray<CalendarParticipant>;
 };

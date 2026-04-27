@@ -55,6 +55,12 @@ const DEV_ROUTES: ReadonlyArray<DevRoute> = [
     label: "채널 · 스레드 패널",
     hint: "?thread=msg-5",
   },
+  { href: "/calendar", label: "캘린더", hint: "/calendar" },
+  {
+    href: "/calendar?event=evt_kickoff",
+    label: "캘린더 · 상세 패널",
+    hint: "?event=…",
+  },
   { href: "/profile", label: "온보딩 · 프로필", hint: "/profile" },
   { href: "/workspace", label: "온보딩 · 워크스페이스", hint: "/workspace" },
   { href: "/complete", label: "온보딩 · 완료", hint: "/complete" },
