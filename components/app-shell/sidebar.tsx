@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import {
+  CalendarIcon,
   CheckCircleIcon,
   HashIcon,
   HomeIcon,
@@ -105,6 +106,12 @@ export function Sidebar() {
             icon={<CheckCircleIcon className="size-4" />}
             badge={myTasks}
             disabled
+          />
+          <SidebarLink
+            href="/calendar"
+            label="Calendar"
+            icon={<CalendarIcon className="size-4" />}
+            isActive={pathname.startsWith("/calendar")}
           />
           <SidebarLink
             label="My week"
