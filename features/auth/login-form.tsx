@@ -1,38 +1,28 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { loginApi } from "@/lib/api/auth";
+import { setTokens } from "@/lib/auth/tokens";
 
 import type { LoginInput, ValidationErrors } from "./validators";
 import { hasErrors, validateLogin } from "./validators";
 
-/**
- * 로그인 폼.
- *
- * 임시 구현: react-hook-form + zod 도입 전까지 useState로 관리.
- * 마이그레이션 시
- *   - const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) })
- * 로 교체하고, Input/Checkbox에 `{...register("field")}`만 스프레드하면 된다.
- *
- * 현재 submit은 BE 미결 상태이므로 콘솔 로그만 찍는다.
- */
 export function LoginForm() {
-  const [values, setValues] = useState<LoginInput>({
-    email: "",
-    password: "",
-  });
+  const router = useRouter();
+  const [values, setValues] = useState<LoginInput>({ email: "", password: "" });
   const [errors, setErrors] = useState<ValidationErrors<LoginInput>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const handleChange = (key: keyof LoginInput, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
-    // 타이핑 시 해당 필드 에러만 소거해 즉각적 피드백을 준다.
     if (errors[key]) {
       setErrors((prev) => ({ ...prev, [key]: undefined }));
     }
@@ -42,19 +32,18 @@ export function LoginForm() {
     event.preventDefault();
     const nextErrors = validateLogin(values);
     setErrors(nextErrors);
-    if (hasErrors(nextErrors)) {
-      return;
-    }
+    if (hasErrors(nextErrors)) return;
 
     setIsSubmitting(true);
+    setServerError(null);
     try {
-      // TODO(NX-auth): BE /auth/login 엔드포인트 계약 확정 후 fetch 연동
-      console.log("[auth] login submit", {
-        email: values.email,
-        passwordLength: values.password.length,
-      });
-      // 실제 연동 전까지는 제출 피드백만 주기 위해 짧은 지연.
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      const tokens = await loginApi(values.email, values.password);
+      setTokens(tokens.accessToken, tokens.refreshToken);
+      router.push("/dashboard");
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "로그인에 실패했습니다."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -93,6 +82,12 @@ export function LoginForm() {
         />
         <FieldError message={errors.password} />
       </div>
+
+      {serverError && (
+        <p role="alert" className="text-sm text-red-500">
+          {serverError}
+        </p>
+      )}
 
       <Button
         type="submit"
