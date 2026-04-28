@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 
 import {
@@ -8,7 +9,9 @@ import {
   SparklesIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
-import { getCurrentUser } from "@/lib/mocks/users";
+import { useUser } from "@/features/auth/user-provider";
+import type { Presence } from "@/types/domain";
+
 
 /**
  * 상단 전역 바.
@@ -16,8 +19,15 @@ import { getCurrentUser } from "@/lib/mocks/users";
  * - 검색 (⌘K) — 현재는 placeholder input
  * - AI / 알림 / 캘린더 / 현재 사용자
  */
+const STATUS_MAP: Record<string, Presence> = {
+  ONLINE: "online",
+  AWAY: "away",
+  DND: "dnd",
+  OFFLINE: "offline",
+};
+
 export function TopBar() {
-  const me = getCurrentUser();
+  const { user, isLoading } = useUser();
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border-subtle bg-surface-base px-4">
@@ -80,13 +90,15 @@ export function TopBar() {
 
         <div className="ml-2 flex items-center gap-2 pl-2">
           <Avatar
-            initials={me.initials}
-            color={me.avatarColor}
-            presence={me.presence}
+            initials={user?.name?.slice(0, 2).toUpperCase() ?? "??"}
+            color="blue"
+            presence={user?.status ? STATUS_MAP[user.status] : undefined}
             size="md"
-            name={me.name}
+            name={user?.name ?? ""}
           />
-          <span className="text-sm font-medium text-fg-primary">{me.name}</span>
+          <span className="text-sm font-medium text-fg-primary">
+            {isLoading ? "..." : (user?.name ?? "사용자")}
+          </span>
         </div>
       </div>
     </header>

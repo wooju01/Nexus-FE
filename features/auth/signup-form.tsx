@@ -1,7 +1,7 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,18 +9,16 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { signupApi } from "@/lib/api/auth";
+import { setTokens } from "@/lib/auth/tokens";
 
 import type { SignupInput, ValidationErrors } from "./validators";
 import { hasErrors, validateSignup } from "./validators";
 
 type FieldValue = string | boolean;
 
-/**
- * 회원가입 폼.
- * 필드: 이름 / 이메일 / 비밀번호 / 비밀번호 확인 / 약관 동의
- * 검증 규칙은 features/auth/validators.ts 참고.
- */
 export function SignupForm() {
+  const router = useRouter();
   const [values, setValues] = useState<SignupInput>({
     name: "",
     email: "",
@@ -30,6 +28,7 @@ export function SignupForm() {
   });
   const [errors, setErrors] = useState<ValidationErrors<SignupInput>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const handleChange = (key: keyof SignupInput, value: FieldValue) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -42,20 +41,18 @@ export function SignupForm() {
     event.preventDefault();
     const nextErrors = validateSignup(values);
     setErrors(nextErrors);
-    if (hasErrors(nextErrors)) {
-      return;
-    }
+    if (hasErrors(nextErrors)) return;
 
     setIsSubmitting(true);
+    setServerError(null);
     try {
-      // TODO(NX-auth): BE /auth/signup 엔드포인트 계약 확정 후 fetch 연동
-      console.log("[auth] signup submit", {
-        name: values.name.trim(),
-        email: values.email,
-        passwordLength: values.password.length,
-        agreed: values.agreed,
-      });
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      const tokens = await signupApi(values.name.trim(), values.email, values.password);
+      setTokens(tokens.accessToken, tokens.refreshToken);
+      router.push("/login");
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "회원가입에 실패했습니다."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -139,6 +136,12 @@ export function SignupForm() {
         />
         <FieldError message={errors.agreed} />
       </div>
+
+      {serverError && (
+        <p role="alert" className="text-sm text-red-500">
+          {serverError}
+        </p>
+      )}
 
       <Button
         type="submit"

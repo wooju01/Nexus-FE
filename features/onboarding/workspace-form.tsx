@@ -15,6 +15,7 @@ import type { ValidationErrors } from "@/features/auth/validators";
 import { useOnboarding } from "./onboarding-provider";
 import type { WorkspaceInput } from "./validators";
 import { hasErrors, toSlug, validateWorkspace } from "./validators";
+import { createWorkspaceApi } from "@/lib/api/workspace";
 
 /**
  * 온보딩 스텝 2: 워크스페이스 생성 폼.
@@ -61,14 +62,14 @@ export function WorkspaceForm() {
 
     setIsSubmitting(true);
     try {
-      // TODO(NX-onboarding): BE /workspaces 엔드포인트 연동
-      console.log("[onboarding] workspace submit", {
-        name: state.workspace.workspaceName.trim(),
-        slug: state.workspace.workspaceSlug,
-      });
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
+      await createWorkspaceApi(
+        state.workspace.workspaceName.trim(),
+        // description은 온보딩에서 입력받지 않으므로 생략
+      );
       router.push("/complete");
+    } catch (err) {
+      // 에러 처리 추가 필요
+      console.error(err);
     } finally {
       setIsSubmitting(false);
     }
