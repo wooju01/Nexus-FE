@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { loginApi } from "@/lib/api/auth";
+import { getWorkspacesApi } from "@/lib/api/workspace";
 import { setTokens } from "@/lib/auth/tokens";
 
 import type { LoginInput, ValidationErrors } from "./validators";
 import { hasErrors, validateLogin } from "./validators";
-import { getWorkspacesApi } from "@/lib/api/workspace";
+
 
 export function LoginForm() {
   const router = useRouter();
@@ -39,8 +40,9 @@ export function LoginForm() {
     setServerError(null);
     try {
       const tokens = await loginApi(values.email, values.password);
-      const workspaces = await getWorkspacesApi(tokens.accessToken);
       setTokens(tokens.accessToken, tokens.refreshToken);
+      const workspaces = await getWorkspacesApi(tokens.accessToken);
+      
       if (workspaces.length === 0) {
         router.push("/profile");
       } else {
