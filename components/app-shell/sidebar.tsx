@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   CalendarIcon,
@@ -16,6 +16,8 @@ import {
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { InviteModal } from "@/features/invitation/invite-modal";
+import { getWorkspacesApi } from "@/lib/api/workspace";
+import { getAccessToken } from "@/lib/auth/tokens";
 import { CHANNELS } from "@/lib/mocks/channels";
 import { PROJECTS } from "@/lib/mocks/projects";
 import { getTasksAssignedTo } from "@/lib/mocks/tasks";
@@ -60,9 +62,38 @@ export function Sidebar() {
   const pathname = usePathname();
   const { myTasks, inboxUnread } = getMyCounts();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  /**
+   * 현재 사용자가 속한 첫 번째 워크스페이스 id.
+   * TODO(workspace-context): 다중 워크스페이스 전환 UI 도입 시 currentWorkspace 컨텍스트로 교체.
+   */
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(
+    null,
+  );
 
   // DM 목록은 현재 사용자 제외.
   const dmUsers = USERS.filter((u) => u.id !== CURRENT_USER_ID);
+
+  useEffect(() => {
+    const accessToken = getAccessToken();
+    if (!accessToken) return;
+
+    let cancelled = false;
+    getWorkspacesApi(accessToken)
+      .then((workspaces) => {
+        if (cancelled) return;
+        if (workspaces.length > 0) {
+          setCurrentWorkspaceId(workspaces[0].id);
+        }
+      })
+      .catch(() => {
+        // 사이드바 1차 부팅 실패는 사용자에게 토스트로 띄우지 않음.
+        // (워크스페이스가 진짜 필요한 모달/페이지에서 빈 상태로 표면화됨.)
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <aside
@@ -224,11 +255,13 @@ export function Sidebar() {
         </button>
       </div>
 
-      <InviteModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        workspaceSlug="aether-labs"
-      />
+      {currentWorkspaceId ? (
+        <InviteModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          workspaceId={currentWorkspaceId}
+        />
+      ) : null}
     </aside>
   );
 }
