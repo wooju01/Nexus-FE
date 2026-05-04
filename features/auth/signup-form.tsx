@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { signupApi } from "@/lib/api/auth";
+import { acceptInvitation } from "@/lib/api/invitations";
 import { setTokens } from "@/lib/auth/tokens";
 
 import type { SignupInput, ValidationErrors } from "./validators";
@@ -17,11 +18,18 @@ import { hasErrors, validateSignup } from "./validators";
 
 type FieldValue = string | boolean;
 
-export function SignupForm() {
+type SignupFormProps = {
+  /** `?invite=<token>` 으로 들어온 경우 — 가입 직후 자동으로 수락 호출 */
+  inviteToken?: string;
+  /** 초대 이메일이 명시된 경우 prefill (사용자가 수정 가능) */
+  prefillEmail?: string;
+};
+
+export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) {
   const router = useRouter();
   const [values, setValues] = useState<SignupInput>({
     name: "",
-    email: "",
+    email: prefillEmail ?? "",
     password: "",
     passwordConfirm: "",
     agreed: false,
@@ -46,12 +54,36 @@ export function SignupForm() {
     setIsSubmitting(true);
     setServerError(null);
     try {
-      const tokens = await signupApi(values.name.trim(), values.email, values.password);
+      const tokens = await signupApi(
+        values.name.trim(),
+        values.email,
+        values.password,
+      );
       setTokens(tokens.accessToken, tokens.refreshToken);
+
+      // 초대 토큰이 있으면 가입 직후 자동 수락 → 워크스페이스로 직행.
+      // 수락 실패해도 가입 자체는 끝났으니, 사용자에겐 메시지만 띄우고 로그인 페이지로 폴백.
+      if (inviteToken) {
+        try {
+          await acceptInvitation(tokens.accessToken, inviteToken);
+          router.push("/dashboard");
+          return;
+        } catch (err) {
+          setServerError(
+            err instanceof Error
+              ? `가입은 완료됐지만 초대 수락에 실패했습니다: ${err.message}`
+              : "가입은 완료됐지만 초대 수락에 실패했습니다.",
+          );
+          // 그래도 로그인된 상태이므로 dashboard 로 보낸다.
+          router.push("/dashboard");
+          return;
+        }
+      }
+
       router.push("/login");
     } catch (err) {
       setServerError(
-        err instanceof Error ? err.message : "회원가입에 실패했습니다."
+        err instanceof Error ? err.message : "회원가입에 실패했습니다.",
       );
     } finally {
       setIsSubmitting(false);
@@ -87,6 +119,12 @@ export function SignupForm() {
           hasError={Boolean(errors.email)}
         />
         <FieldError message={errors.email} />
+        {prefillEmail ? (
+          <p className="mt-1 text-[11px] text-fg-tertiary">
+            초대받은 이메일이 자동 입력됐습니다. 다른 이메일을 사용하면 초대가
+            수락되지 않을 수 있어요.
+          </p>
+        ) : null}
       </div>
 
       <div>

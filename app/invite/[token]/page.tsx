@@ -1,12 +1,17 @@
-import { getInvitationByToken } from "@/lib/mocks/invitations";
-import { AcceptView } from "@/features/invitation/accept-view";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import { AcceptView } from "@/features/invitation/accept-view";
+import { fetchInvitationByToken } from "@/lib/api/invitations";
 
 /**
  * 초대 확인/수락 페이지 (Server Component).
- * JWT 불필요 — 토큰으로 초대 정보를 조회한다.
- * TODO(sejun, NX-invite): BE 연동 시 fetch로 교체.
+ *
+ * - JWT 불필요 — BE 의 `GET /invitations/:token` 은 `@Public()` 라우트
+ * - 토큰이 잘못/만료된 경우는 BE 응답에 따라 다른 UI:
+ *     - 404 → fetchInvitationByToken 이 null 반환 → InvalidInviteView
+ *     - status="expired" → AcceptView 가 만료 화면 자체 처리
+ * - 비로그인 사용자가 들어왔을 때의 가입 페이지 redirect 는 AcceptView (client) 에서.
  */
 export default async function InvitePage({
   params,
@@ -14,7 +19,7 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const invitation = getInvitationByToken(token);
+  const invitation = await fetchInvitationByToken(token).catch(() => null);
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center bg-surface-base px-6 py-12">

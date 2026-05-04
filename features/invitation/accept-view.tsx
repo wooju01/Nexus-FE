@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { CheckCircleIcon, PeopleIcon } from "@/components/icons";
 import { acceptInvitation } from "@/lib/api/invitations";
+import { getAccessToken } from "@/lib/auth/tokens";
 
 import type { Invitation } from "@/types/invitation";
 
@@ -15,23 +17,59 @@ type AcceptViewProps = {
 
 /**
  * 초대 수락 Client Component.
- * 상태(pending/accepted/expired)에 따라 다른 UI를 보여준다.
+ *
+ * 흐름:
+ *   1. 컴포넌트 마운트 시 access token 확인
+ *      - 비로그인 → /signup?invite={token} 으로 redirect
+ *      - 로그인 → 그대로 수락 화면 표시
+ *   2. 수락 클릭 → POST /invitations/:token/accept
+ *      - 성공: 워크스페이스 home(/dashboard) 로 이동
+ *      - 실패(만료/이메일 불일치 등): 에러 메시지 인라인 표시
+ *
+ * status 별 UI:
+ *   - expired → 만료 안내 (수락 불가)
+ *   - accepted → 환영 화면 + 대시보드 이동
+ *   - pending → 수락 버튼
  */
 export function AcceptView({ invitation }: AcceptViewProps) {
+  const router = useRouter();
   const [isAccepting, setIsAccepting] = useState(false);
   const [isAccepted, setIsAccepted] = useState(
     invitation.status === "accepted",
   );
+  const [error, setError] = useState<string | null>(null);
+
+  // 비로그인 사용자는 가입 페이지로 보낸다 (만료된 초대는 굳이 가입 유도하지 않음).
+  useEffect(() => {
+    if (invitation.status === "expired" || isAccepted) return;
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      router.replace(`/signup?invite=${invitation.token}`);
+    }
+  }, [invitation.status, invitation.token, isAccepted, router]);
 
   const handleAccept = useCallback(async () => {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      router.replace(`/signup?invite=${invitation.token}`);
+      return;
+    }
+
     setIsAccepting(true);
+    setError(null);
     try {
-      await acceptInvitation(invitation.token);
+      await acceptInvitation(accessToken, invitation.token);
       setIsAccepted(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "초대 수락 중 오류가 발생했습니다.",
+      );
     } finally {
       setIsAccepting(false);
     }
-  }, [invitation.token]);
+  }, [invitation.token, router]);
 
   // 만료된 초대
   if (invitation.status === "expired") {
@@ -65,7 +103,11 @@ export function AcceptView({ invitation }: AcceptViewProps) {
         <div className="relative">
           <div className="absolute inset-0 animate-pulse rounded-full bg-status-done/15 blur-xl" />
           <div className="relative flex size-16 items-center justify-center rounded-full bg-status-done/10 ring-1 ring-status-done/20">
-            <CheckCircleIcon width={32} height={32} className="text-status-done" />
+            <CheckCircleIcon
+              width={32}
+              height={32}
+              className="text-status-done"
+            />
           </div>
         </div>
         <h1 className="mt-6 text-2xl font-bold text-fg-primary">
@@ -108,6 +150,13 @@ export function AcceptView({ invitation }: AcceptViewProps) {
       {invitation.email ? (
         <p className="mt-1 text-xs text-fg-tertiary">{invitation.email}</p>
       ) : null}
+
+      {error ? (
+        <p role="alert" className="mt-4 text-sm text-red-500">
+          {error}
+        </p>
+      ) : null}
+
       <Button
         variant="primary"
         size="lg"
