@@ -18,7 +18,6 @@ type ProfileData = {
 
 type WorkspaceData = {
   workspaceName: string;
-  workspaceSlug: string;
 };
 
 type OnboardingState = {
@@ -42,7 +41,6 @@ const INITIAL_STATE: OnboardingState = {
   },
   workspace: {
     workspaceName: "",
-    workspaceSlug: "",
   },
 };
 
