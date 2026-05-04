@@ -16,17 +16,15 @@ export function CompleteView() {
   const { state } = useOnboarding();
   const [copied, setCopied] = useState(false);
 
-  const inviteLink = `https://nexus.app/${state.workspace.workspaceSlug}/invite`;
-
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(inviteLink);
+      await navigator.clipboard.writeText("준비 중");
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // 클립보드 API 미지원 환경 대비
     }
-  }, [inviteLink]);
+  }, []);
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -57,7 +55,7 @@ export function CompleteView() {
         <p className="mb-3 text-xs font-medium text-fg-tertiary">초대 링크</p>
         <div className="flex items-center gap-2 rounded-lg bg-surface-base p-2">
           <span className="min-w-0 flex-1 truncate px-2 text-left font-mono text-xs text-fg-secondary">
-            {inviteLink}
+            설정에서 초대 링크를 생성할 수 있어요
           </span>
           <Button
             variant={copied ? "primary" : "secondary"}
