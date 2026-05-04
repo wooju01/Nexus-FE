@@ -58,6 +58,90 @@ export async function sendMessageApi(
   return handleResponse<Message>(res);
 }
 
+// PATCH /messages/:messageId
+export async function updateMessageApi(
+  accessToken: string,
+  messageId: string,
+  content: unknown,
+): Promise<Message> {
+  const res = await fetch(`${API_URL}/messages/${messageId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ content }),
+  });
+  return handleResponse<Message>(res);
+}
+
+// DELETE /messages/:messageId
+export async function deleteMessageApi(
+  accessToken: string,
+  messageId: string,
+): Promise<void> {
+  await fetch(`${API_URL}/messages/${messageId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+// GET /messages/:messageId/replies
+export async function getRepliesApi(
+  accessToken: string,
+  messageId: string,
+): Promise<Message[]> {
+  const res = await fetch(`${API_URL}/messages/${messageId}/replies`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<Message[]>(res);
+}
+
+// POST /messages/:messageId/replies
+export async function addReplyApi(
+  accessToken: string,
+  messageId: string,
+  content: unknown,
+): Promise<Message> {
+  const res = await fetch(`${API_URL}/messages/${messageId}/replies`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ content }),
+  });
+  return handleResponse<Message>(res);
+}
+
+// POST /messages/:messageId/reactions
+export async function addReactionApi(
+  accessToken: string,
+  messageId: string,
+  emoji: string,
+): Promise<void> {
+  await fetch(`${API_URL}/messages/${messageId}/reactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ emoji }),
+  });
+}
+
+// DELETE /messages/:messageId/reactions/:emoji
+export async function removeReactionApi(
+  accessToken: string,
+  messageId: string,
+  emoji: string,
+): Promise<void> {
+  await fetch(`${API_URL}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 // POST /channels/:channelId/read-markers
 export async function updateReadMarkerApi(
   accessToken: string,

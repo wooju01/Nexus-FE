@@ -1,4 +1,4 @@
-import { RealChannelView } from "@/features/channel/real-channel-view";
+import { ChannelView } from "@/features/channel/channel-view";
 
 type ChannelPageProps = {
   params: Promise<{ id: string }>;
@@ -6,5 +6,5 @@ type ChannelPageProps = {
 
 export default async function ChannelPage({ params }: ChannelPageProps) {
   const { id } = await params;
-  return <RealChannelView channelId={id} />;
+  return <ChannelView channelId={id} />;
 }
