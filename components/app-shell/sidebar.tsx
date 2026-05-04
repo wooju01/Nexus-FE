@@ -19,6 +19,7 @@ import { getAccessToken } from "@/lib/auth/tokens";
 import { getChannelsApi, type Channel } from "@/lib/api/channel";
 import { getDmsApi, type DmChannel } from "@/lib/api/dm";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
+import { InviteModal } from "@/features/invitation/invite-modal";
 import { cn } from "@/lib/utils/cn";
 
 import { UnreadBadge } from "./sidebar-badges";
@@ -34,6 +35,7 @@ const STATUS_PRESENCE = {
 export function Sidebar() {
   const pathname = usePathname();
   const { currentWorkspace } = useWorkspace();
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dms, setDms] = useState<DmChannel[]>([]);
@@ -171,12 +173,21 @@ export function Sidebar() {
       <div className="border-t border-border-subtle p-3">
         <button
           type="button"
+          onClick={() => setIsInviteModalOpen(true)}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
         >
           <PeopleIcon className="size-4" />
           <span>Invite teammates</span>
         </button>
       </div>
+
+      {currentWorkspace ? (
+        <InviteModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          workspaceId={currentWorkspace.id}
+        />
+      ) : null}
     </aside>
   );
 }
