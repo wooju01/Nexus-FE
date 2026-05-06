@@ -47,16 +47,71 @@ export async function refreshApi(refreshToken: string): Promise<AuthTokens> {
   return handleResponse<AuthTokens>(res);
 }
 
+export type UserProfile = {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string | null;
+  status: "ONLINE" | "AWAY" | "DND" | "OFFLINE";
+  createdAt: string;
+};
+
 /** GET /auth/profile */
-export async function getProfileApi(accessToken: string) {
+export async function getProfileApi(accessToken: string): Promise<UserProfile> {
   const res = await fetch(`${API_URL}/auth/profile`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  return handleResponse<{
-    id: string;
-    email: string;
-    name: string;
-    avatar: string | null;
-    status: string;
-  }>(res);
+  return handleResponse<UserProfile>(res);
+}
+
+/** PATCH /auth/profile */
+export async function updateProfileApi(
+  accessToken: string,
+  data: { name?: string },
+): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/auth/profile`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<UserProfile>(res);
+}
+
+/** PATCH /auth/profile/presence */
+export async function updatePresenceApi(
+  accessToken: string,
+  status: "ONLINE" | "AWAY" | "DND" | "OFFLINE",
+): Promise<{ id: string; status: string }> {
+  const res = await fetch(`${API_URL}/auth/profile/presence`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+  return handleResponse<{ id: string; status: string }>(res);
+}
+
+/** PATCH /auth/password */
+export async function changePasswordApi(
+  accessToken: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/password`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
+  }
 }
