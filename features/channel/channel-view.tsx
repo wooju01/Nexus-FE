@@ -42,6 +42,23 @@ function formatTime(iso: string) {
   });
 }
 
+function getDateKey(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function getDateLabel(iso: string) {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (getDateKey(iso) === getDateKey(today.toISOString())) return "오늘";
+  if (getDateKey(iso) === getDateKey(yesterday.toISOString())) return "어제";
+
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function groupReactions(
   reactions: { emoji: string; userId: string }[] | null | undefined,
   currentUserId: string,
@@ -254,14 +271,26 @@ export function ChannelView({ channelId }: { channelId: string }) {
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map((m) => {
+              {messages.map((m, i) => {
                 const grouped = groupReactions(m.reactions, currentUserId);
                 const isActiveThread = activeThreadId === m.id;
                 const replyCount = m._count?.replies ?? 0;
+                const showDateDivider =
+                  i === 0 || getDateKey(messages[i - 1]!.createdAt) !== getDateKey(m.createdAt);
 
                 return (
+                  <div key={m.id}>
+                  {showDateDivider ? (
+                    <div className="my-4 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border-subtle" />
+                      <span className="text-[11px] font-medium text-fg-tertiary">
+                        {getDateLabel(m.createdAt)}
+                      </span>
+                      <div className="h-px flex-1 bg-border-subtle" />
+                    </div>
+                  ) : null}
                   <article
-                    key={m.id}
+                    key={`msg-${m.id}`}
                     className={cn(
                       "group relative -mx-2 flex gap-3 rounded-md p-2 transition-colors",
                       isActiveThread
@@ -427,6 +456,7 @@ export function ChannelView({ channelId }: { channelId: string }) {
                       </div>
                     </div>
                   </article>
+                  </div>
                 );
               })}
             </div>

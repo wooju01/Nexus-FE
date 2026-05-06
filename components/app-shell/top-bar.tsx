@@ -1,4 +1,6 @@
 "use client";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -10,15 +12,16 @@ import {
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { useUser } from "@/features/auth/user-provider";
+import { getAccessToken } from "@/lib/auth/tokens";
+import {
+  getNotificationsApi,
+  countUnreadApi,
+  type Notification,
+} from "@/lib/api/notification";
+import { getSocket } from "@/lib/ws/client";
+import { NotificationPanel } from "@/features/notification/notification-panel";
 import type { Presence } from "@/types/domain";
 
-
-/**
- * 상단 전역 바.
- * - 워크스페이스 스위처 (cosmetic)
- * - 검색 (⌘K) — 현재는 placeholder input
- * - AI / 알림 / 캘린더 / 현재 사용자
- */
 const STATUS_MAP: Record<string, Presence> = {
   ONLINE: "online",
   AWAY: "away",
@@ -28,6 +31,73 @@ const STATUS_MAP: Record<string, Presence> = {
 
 export function TopBar() {
   const { user, isLoading } = useUser();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // 초기 미읽음 카운트 fetch
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    countUnreadApi(token)
+      .then((r) => setUnreadCount(r.count))
+      .catch(console.error);
+  }, []);
+
+  // 실시간 알림 수신
+  useEffect(() => {
+    const socket = getSocket();
+
+    function onNotificationCreated(notification: Notification) {
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadCount((c) => c + 1);
+    }
+
+    socket.on("notification.created", onNotificationCreated);
+    return () => {
+      socket.off("notification.created", onNotificationCreated);
+    };
+  }, []);
+
+  // 패널 외부 클릭 시 닫기
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        !bellRef.current?.contains(e.target as Node)
+      ) {
+        setIsPanelOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleBellClick() {
+    if (!isPanelOpen && notifications.length === 0) {
+      const token = getAccessToken();
+      if (token) {
+        const data = await getNotificationsApi(token).catch(() => null);
+        if (data) setNotifications(data.items);
+      }
+    }
+    setIsPanelOpen((prev) => !prev);
+  }
+
+  function handleRead(id: string) {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+  }
+
+  function handleReadAll() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+  }
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border-subtle bg-surface-base px-4">
@@ -67,19 +137,39 @@ export function TopBar() {
         >
           <SparklesIcon />
         </button>
-        <button
-          type="button"
-          aria-label="알림 3건"
-          className="relative flex size-9 items-center justify-center rounded-lg text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
-        >
-          <BellIcon />
-          <span
-            aria-hidden="true"
-            className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-priority-p1 text-[10px] font-semibold text-white"
+
+        {/* 알림 벨 */}
+        <div className="relative">
+          <button
+            ref={bellRef}
+            type="button"
+            aria-label={`알림${unreadCount > 0 ? ` ${unreadCount}건` : ""}`}
+            onClick={handleBellClick}
+            className="relative flex size-9 items-center justify-center rounded-lg text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
           >
-            3
-          </span>
-        </button>
+            <BellIcon />
+            {unreadCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-priority-p1 text-[10px] font-semibold text-white"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            ) : null}
+          </button>
+
+          {isPanelOpen ? (
+            <div ref={panelRef}>
+              <NotificationPanel
+                notifications={notifications}
+                onRead={handleRead}
+                onReadAll={handleReadAll}
+                onClose={() => setIsPanelOpen(false)}
+              />
+            </div>
+          ) : null}
+        </div>
+
         <button
           type="button"
           aria-label="캘린더"

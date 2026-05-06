@@ -16,10 +16,12 @@ import {
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { getAccessToken } from "@/lib/auth/tokens";
+import { getProfileApi } from "@/lib/api/auth";
 import { getChannelsApi, type Channel } from "@/lib/api/channel";
 import { getDmsApi, type DmChannel } from "@/lib/api/dm";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
 import { InviteModal } from "@/features/invitation/invite-modal";
+import { DmStartModal } from "@/features/dm/dm-start-modal";
 import { cn } from "@/lib/utils/cn";
 
 import { UnreadBadge } from "./sidebar-badges";
@@ -36,9 +38,17 @@ export function Sidebar() {
   const pathname = usePathname();
   const { currentWorkspace } = useWorkspace();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isDmModalOpen, setIsDmModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState("");
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dms, setDms] = useState<DmChannel[]>([]);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    getProfileApi(token).then((p) => setCurrentUserId(p.id)).catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (!currentWorkspace) return;
@@ -53,6 +63,13 @@ export function Sidebar() {
       .then(setDms)
       .catch(console.error);
   }, [currentWorkspace]);
+
+  function refreshDms() {
+    if (!currentWorkspace) return;
+    const token = getAccessToken();
+    if (!token) return;
+    getDmsApi(token, currentWorkspace.id).then(setDms).catch(console.error);
+  }
 
   return (
     <aside
@@ -134,7 +151,11 @@ export function Sidebar() {
         </SidebarSection>
 
         {/* DMs */}
-        <SidebarSection title="Direct Messages" actionLabel="DM 시작">
+        <SidebarSection
+          title="Direct Messages"
+          actionLabel="DM 시작"
+          onAction={() => setIsDmModalOpen(true)}
+        >
           <ul className="space-y-0.5">
             {dms.map((dm) => {
               const other = dm.members[0]?.user;
@@ -182,11 +203,20 @@ export function Sidebar() {
       </div>
 
       {currentWorkspace ? (
-        <InviteModal
-          isOpen={isInviteModalOpen}
-          onClose={() => setIsInviteModalOpen(false)}
-          workspaceId={currentWorkspace.id}
-        />
+        <>
+          <InviteModal
+            isOpen={isInviteModalOpen}
+            onClose={() => setIsInviteModalOpen(false)}
+            workspaceId={currentWorkspace.id}
+          />
+          <DmStartModal
+            isOpen={isDmModalOpen}
+            onClose={() => setIsDmModalOpen(false)}
+            workspaceId={currentWorkspace.id}
+            currentUserId={currentUserId}
+            onDmCreated={refreshDms}
+          />
+        </>
       ) : null}
     </aside>
   );
