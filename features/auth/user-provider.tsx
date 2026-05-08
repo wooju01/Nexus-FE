@@ -1,23 +1,20 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import { getProfileApi } from "@/lib/api/auth";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { getProfileApi, type UserProfile } from "@/lib/api/auth";
 import { getAccessToken } from "@/lib/auth/tokens";
-
-type UserProfile = {
-  id: string;
-  email: string;
-  name: string;
-  avatar: string | null;
-  status: string;
-};
 
 type UserContextValue = {
   user: UserProfile | null;
   isLoading: boolean;
+  refreshUser: () => void;
 };
 
-const UserContext = createContext<UserContextValue>({ user: null, isLoading: true });
+const UserContext = createContext<UserContextValue>({
+  user: null,
+  isLoading: true,
+  refreshUser: () => {},
+});
 
 export function useUser() {
   return useContext(UserContext);
@@ -27,7 +24,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchProfile = useCallback(() => {
     const token = getAccessToken();
     if (!token) {
       setIsLoading(false);
@@ -39,8 +36,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
   return (
-    <UserContext.Provider value={{ user, isLoading }}>
+    <UserContext.Provider value={{ user, isLoading, refreshUser: fetchProfile }}>
       {children}
     </UserContext.Provider>
   );

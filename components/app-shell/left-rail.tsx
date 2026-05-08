@@ -38,7 +38,12 @@ const RAIL_ITEMS: ReadonlyArray<RailItem> = [
     activePrefix: "/projects",
   },
   { label: "Docs", icon: DocsIcon },
-  { label: "People", icon: PeopleIcon },
+  {
+    label: "People",
+    href: "/settings/profile",
+    icon: PeopleIcon,
+    activePrefix: "/settings",
+  },
 ];
 
 /**

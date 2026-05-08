@@ -87,12 +87,14 @@ export function SidebarLink({
 type SidebarSectionProps = {
   title: string;
   actionLabel: string;
+  onAction?: () => void;
   children: React.ReactNode;
 };
 
 export function SidebarSection({
   title,
   actionLabel,
+  onAction,
   children,
 }: SidebarSectionProps) {
   return (
@@ -104,7 +106,8 @@ export function SidebarSection({
         <button
           type="button"
           aria-label={actionLabel}
-          title={`${actionLabel} — 준비 중`}
+          title={onAction ? actionLabel : `${actionLabel} — 준비 중`}
+          onClick={onAction}
           className="flex size-5 items-center justify-center rounded text-fg-tertiary hover:bg-surface-elevated hover:text-fg-primary"
         >
           <PlusIcon className="size-3.5" />
