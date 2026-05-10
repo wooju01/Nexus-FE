@@ -19,10 +19,13 @@ import { getAccessToken } from "@/lib/auth/tokens";
 import { getProfileApi } from "@/lib/api/auth";
 import { getChannelsApi, type Channel } from "@/lib/api/channel";
 import { getDmsApi, type DmChannel } from "@/lib/api/dm";
+import { getProjectsApi, type Project } from "@/lib/api/project";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
 import { InviteModal } from "@/features/invitation/invite-modal";
 import { DmStartModal } from "@/features/dm/dm-start-modal";
+import { CreateProjectModal } from "@/features/project/create-project-modal";
 import { cn } from "@/lib/utils/cn";
+import { BoardIcon } from "@/components/icons";
 
 import { UnreadBadge } from "./sidebar-badges";
 import { SidebarLink, SidebarSection } from "./sidebar-nav";
@@ -43,6 +46,8 @@ export function Sidebar() {
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dms, setDms] = useState<DmChannel[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -61,6 +66,10 @@ export function Sidebar() {
 
     getDmsApi(token, currentWorkspace.id)
       .then(setDms)
+      .catch(console.error);
+
+    getProjectsApi(token, currentWorkspace.id)
+      .then(setProjects)
       .catch(console.error);
   }, [currentWorkspace]);
 
@@ -150,6 +159,37 @@ export function Sidebar() {
           </ul>
         </SidebarSection>
 
+        {/* Projects */}
+        <SidebarSection
+          title="Projects"
+          actionLabel="프로젝트 추가"
+          onAction={() => setIsProjectModalOpen(true)}
+        >
+          <ul className="space-y-0.5">
+            {projects.map((p) => {
+              const href = `/projects/${p.id}`;
+              const isActive = pathname.startsWith(href);
+              return (
+                <li key={p.id}>
+                  <Link
+                    href={href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                      isActive
+                        ? "bg-surface-overlay text-fg-primary"
+                        : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
+                    )}
+                  >
+                    <BoardIcon className="size-4 shrink-0 text-fg-tertiary" />
+                    <span className="flex-1 truncate">{p.name}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </SidebarSection>
+
         {/* DMs */}
         <SidebarSection
           title="Direct Messages"
@@ -215,6 +255,12 @@ export function Sidebar() {
             workspaceId={currentWorkspace.id}
             currentUserId={currentUserId}
             onDmCreated={refreshDms}
+          />
+          <CreateProjectModal
+            isOpen={isProjectModalOpen}
+            onClose={() => setIsProjectModalOpen(false)}
+            workspaceId={currentWorkspace.id}
+            onCreated={(project) => setProjects((prev) => [...prev, project])}
           />
         </>
       ) : null}

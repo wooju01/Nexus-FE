@@ -1,28 +1,37 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 
+import { getAccessToken } from "@/lib/auth/tokens";
+import { getProjectApi, type Project } from "@/lib/api/project";
 import { BoardView } from "@/features/board/board-view";
-import { getProjectBySlug } from "@/lib/mocks/projects";
-import { getTasksByProjectId } from "@/lib/mocks/tasks";
 
-type ProjectPageProps = {
-  // Next.js 16: params / searchParams 둘 다 Promise.
+type ProjectBoardPageProps = {
+  // slug 파라미터명이지만 실제값은 project id(cuid)
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ task?: string }>;
 };
 
-export default async function ProjectBoardPage({
+export default function ProjectBoardPage({
   params,
   searchParams,
-}: ProjectPageProps) {
-  const [{ slug }, { task }] = await Promise.all([params, searchParams]);
-  const project = getProjectBySlug(slug);
-  if (!project) {
-    notFound();
-  }
+}: ProjectBoardPageProps) {
+  const { slug: projectId } = use(params);
+  const { task: selectedTaskId } = use(searchParams);
 
-  const tasks = getTasksByProjectId(project.id);
+  const [project, setProject] = useState<Project | null>(null);
+  const [isNotFound, setIsNotFound] = useState(false);
 
-  return (
-    <BoardView project={project} tasks={tasks} selectedTaskId={task} />
-  );
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    getProjectApi(token, projectId)
+      .then(setProject)
+      .catch(() => setIsNotFound(true));
+  }, [projectId]);
+
+  if (isNotFound) notFound();
+
+  return <BoardView project={project} selectedTaskId={selectedTaskId} />;
 }

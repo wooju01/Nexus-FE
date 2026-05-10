@@ -1,22 +1,14 @@
+"use client";
+
 import { FilterIcon, PlusIcon } from "@/components/icons";
-import { Avatar } from "@/components/ui/avatar";
-import { getTask } from "@/lib/mocks/tasks";
-import { getUser } from "@/lib/mocks/users";
-import type {
-  BoardColumn as BoardColumnType,
-  Project,
-  Task,
-  TaskId,
-} from "@/types/domain";
+import type { Project } from "@/lib/api/project";
+import type { BoardColumn as BoardColumnType } from "@/types/domain";
 
 import { BoardColumn } from "./board-column";
-import { TaskDetailPane } from "./task-detail-pane";
 
 type BoardViewProps = {
-  project: Project;
-  tasks: ReadonlyArray<Task>;
-  /** 현재 선택된 task id — 있으면 우측 상세 페인 렌더. */
-  selectedTaskId?: TaskId;
+  project: Project | null;
+  selectedTaskId?: string;
 };
 
 const COLUMNS: ReadonlyArray<BoardColumnType> = [
@@ -26,24 +18,16 @@ const COLUMNS: ReadonlyArray<BoardColumnType> = [
   { key: "In review", label: "In review" },
 ];
 
-/**
- * 프로젝트 보드 전체 뷰.
- * 헤더 + 컬럼 리스트 (+ 선택된 태스크의 상세 페인).
- */
-export function BoardView({ project, tasks, selectedTaskId }: BoardViewProps) {
-  const members = project.memberIds
-    .map((id) => getUser(id))
-    .filter((u): u is NonNullable<typeof u> => Boolean(u));
+export function BoardView({ project, selectedTaskId: _selectedTaskId }: BoardViewProps) {
+  const boardPath = project ? `/projects/${project.id}` : "";
 
-  const boardPath = `/projects/${project.slug}`;
-  const getSelectHref = (taskId: TaskId) => `${boardPath}?task=${taskId}`;
-
-  const selectedTask = selectedTaskId ? getTask(selectedTaskId) : undefined;
-  // 선택된 태스크가 이 프로젝트 것이 아니면 무시.
-  const safeSelectedTask =
-    selectedTask && selectedTask.projectId === project.id
-      ? selectedTask
-      : undefined;
+  if (!project) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-fg-tertiary">
+        프로젝트를 불러오는 중...
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-1">
@@ -54,38 +38,13 @@ export function BoardView({ project, tasks, selectedTaskId }: BoardViewProps) {
             <h1 className="text-lg font-semibold text-fg-primary">
               {project.name}
             </h1>
-            <span
-              aria-hidden="true"
-              className="text-sm text-fg-tertiary"
-            >
+            <span aria-hidden="true" className="text-sm text-fg-tertiary">
               /
             </span>
             <span className="text-sm text-fg-secondary">Board</span>
-            <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-emerald-300">
-              {project.status}
-            </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex -space-x-1.5">
-              {members.slice(0, 5).map((u) => (
-                <Avatar
-                  key={u.id}
-                  initials={u.initials}
-                  color={u.avatarColor}
-                  size="sm"
-                  presence={u.presence}
-                  name={u.name}
-                  className="ring-2 ring-surface-base"
-                />
-              ))}
-              {members.length > 5 ? (
-                <span className="inline-flex size-6 items-center justify-center rounded-full bg-surface-overlay text-[10px] font-semibold text-fg-secondary ring-2 ring-surface-base">
-                  +{members.length - 5}
-                </span>
-              ) : null}
-            </div>
-
             <button
               type="button"
               className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-elevated px-3 py-1.5 text-xs font-medium text-fg-secondary hover:text-fg-primary"
@@ -104,28 +63,21 @@ export function BoardView({ project, tasks, selectedTaskId }: BoardViewProps) {
           </div>
         </header>
 
-        {/* 컬럼들 — 가로 스크롤 */}
+        {/* 컬럼들 — 가로 스크롤 (태스크는 다음 단계에서 연결) */}
         <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto p-4">
-          {COLUMNS.map((col) => {
-            const columnTasks = tasks.filter((t) => t.status === col.key);
-            return (
-              <BoardColumn
-                key={col.key}
-                columnKey={col.key}
-                label={col.label}
-                tasks={columnTasks}
-                wipLimit={col.wipLimit}
-                getSelectHref={getSelectHref}
-                selectedTaskId={safeSelectedTask?.id}
-              />
-            );
-          })}
+          {COLUMNS.map((col) => (
+            <BoardColumn
+              key={col.key}
+              columnKey={col.key}
+              label={col.label}
+              tasks={[]}
+              wipLimit={col.wipLimit}
+              getSelectHref={(taskId) => `${boardPath}?task=${taskId}`}
+              selectedTaskId={undefined}
+            />
+          ))}
         </div>
       </section>
-
-      {safeSelectedTask ? (
-        <TaskDetailPane task={safeSelectedTask} closeHref={boardPath} />
-      ) : null}
     </div>
   );
 }

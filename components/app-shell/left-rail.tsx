@@ -33,7 +33,6 @@ const RAIL_ITEMS: ReadonlyArray<RailItem> = [
   { label: "Messages", icon: MessagesIcon },
   {
     label: "Boards",
-    href: "/projects/launch-q2",
     icon: BoardIcon,
     activePrefix: "/projects",
   },
