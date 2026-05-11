@@ -101,6 +101,12 @@ export function ChannelView({ channelId }: { channelId: string }) {
     const socket = getSocket();
     socket.emit("channel.join", channelId);
 
+    // 소켓 재연결 시 채널 룸 재진입 (끊김→재연결 시 서버 룸에서 빠지기 때문)
+    function onReconnect() {
+      socket.emit("channel.join", channelId);
+    }
+    socket.on("connect", onReconnect);
+
     function onMessageCreated(message: Message) {
       if (message.parentId) {
         // 스레드 답글은 reply count만 업데이트
@@ -162,6 +168,7 @@ export function ChannelView({ channelId }: { channelId: string }) {
 
     return () => {
       socket.emit("channel.leave", channelId);
+      socket.off("connect", onReconnect);
       socket.off("message.created", onMessageCreated);
       socket.off("message.updated", onMessageUpdated);
       socket.off("message.deleted", onMessageDeleted);
