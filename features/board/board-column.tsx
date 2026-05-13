@@ -1,6 +1,7 @@
 import { PlusIcon } from "@/components/icons";
+import type { Task } from "@/lib/api/task";
 import { cn } from "@/lib/utils/cn";
-import type { BoardColumnKey, Task, TaskId } from "@/types/domain";
+import type { BoardColumnKey } from "@/types/domain";
 
 import { TaskCard } from "./task-card";
 
@@ -9,10 +10,8 @@ type BoardColumnProps = {
   label: string;
   tasks: ReadonlyArray<Task>;
   wipLimit?: number;
-  /** 카드 클릭 시 이동할 URL 생성기. */
-  getSelectHref?: (taskId: TaskId) => string;
-  /** 현재 선택된 task id — 카드 강조용. */
-  selectedTaskId?: TaskId;
+  getSelectHref?: (taskId: string) => string;
+  selectedTaskId?: string;
 };
 
 /**
@@ -82,6 +81,7 @@ export function BoardColumn({
               selectHref={getSelectHref ? getSelectHref(t.id) : undefined}
               isSelected={t.id === selectedTaskId}
             />
+
           ))
         )}
       </div>
