@@ -1,45 +1,68 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 
-import {
-  EditIcon,
-  MoreHorizontalIcon,
-  SparklesIcon,
-  XIcon,
-} from "@/components/icons";
-import { MessageComposer } from "@/features/channel/message-composer";
-
-import type { Task } from "@/types/domain";
+import { MoreHorizontalIcon, TrashIcon, XIcon } from "@/components/icons";
+import { getAccessToken } from "@/lib/auth/tokens";
+import { deleteTaskApi, updateTaskApi, type Task, type TaskPriority, type TaskStatus } from "@/lib/api/task";
 
 import { PaneIconButton } from "./task-detail-atoms";
-import { TaskConversation } from "./task-conversation";
 import { TaskProperties } from "./task-properties";
 
 type TaskDetailPaneProps = {
   task: Task;
-  /** 닫기 시 돌아갈 URL — 보통 보드 루트. */
-  closeHref: string;
+  closeHref: string;                   // 닫기 버튼 → 보드로 돌아가는 URL
+  onTaskUpdated: (task: Task) => void; // 수정 후 보드 카드도 즉시 갱신
+  onTaskDeleted: (taskId: string) => void;
 };
 
-/**
- * Task 상세 우측 패인 셸.
- * 헤더(툴바) + 제목 + 속성 그리드 + 탭 + 대화 + 컴포저 + 하단 액션.
- * 내부 구성요소는 `task-properties` / `task-conversation` / `task-detail-atoms`로 분리.
- */
-export function TaskDetailPane({ task, closeHref }: TaskDetailPaneProps) {
+export function TaskDetailPane({ task, closeHref, onTaskUpdated, onTaskDeleted }: TaskDetailPaneProps) {
+  const [localTask, setLocalTask] = useState<Task>(task);
+  const [deleting, setDeleting] = useState(false);
+
+  // Status / Priority 변경 → PATCH 요청 후 로컬 상태 + 보드 동기화
+  async function handleUpdate(patch: { status?: TaskStatus; priority?: TaskPriority }) {
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      const updated = await updateTaskApi(token, localTask.id, patch);
+      setLocalTask(updated);
+      onTaskUpdated(updated);
+    } catch {
+      // 실패 시 이전 상태 유지 (낙관적 업데이트 없이 단순 처리)
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`NX-${localTask.number} 태스크를 삭제할까요?`)) return;
+    const token = getAccessToken();
+    if (!token) return;
+    setDeleting(true);
+    try {
+      await deleteTaskApi(token, localTask.id);
+      onTaskDeleted(localTask.id);
+    } catch {
+      setDeleting(false);
+    }
+  }
+
   return (
     <aside
-      aria-label={`Task ${task.id} 상세`}
-      className="flex w-[26rem] shrink-0 flex-col border-l border-border-subtle bg-surface-base"
+      aria-label={`NX-${localTask.number} 상세`}
+      className="flex w-104 shrink-0 flex-col border-l border-border-subtle bg-surface-base"
     >
+      {/* 헤더: 태스크 번호 + 도구 버튼들 */}
       <header className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
-        <span className="font-mono text-xs text-fg-tertiary">{task.id}</span>
+        <span className="font-mono text-xs text-fg-tertiary">NX-{localTask.number}</span>
         <div className="flex items-center gap-0.5">
-          <PaneIconButton title="편집">
-            <EditIcon className="size-4" />
+          <PaneIconButton title="삭제" onClick={handleDelete} disabled={deleting}>
+            <TrashIcon className="size-4 text-red-400" />
           </PaneIconButton>
           <PaneIconButton title="더 보기">
             <MoreHorizontalIcon className="size-4" />
           </PaneIconButton>
+          {/* 닫기 → boardPath로 이동 (?task 쿼리 제거) */}
           <Link
             href={closeHref}
             aria-label="상세 닫기"
@@ -52,38 +75,34 @@ export function TaskDetailPane({ task, closeHref }: TaskDetailPaneProps) {
       </header>
 
       <div className="flex-1 overflow-y-auto">
+        {/* 제목 */}
         <section className="px-5 pb-4 pt-4">
           <h2 className="text-lg font-semibold leading-snug text-fg-primary">
-            {task.title}
+            {localTask.title}
           </h2>
+          <p className="mt-1 text-xs text-fg-tertiary">
+            {localTask.creator.name} 생성 ·{" "}
+            {new Date(localTask.createdAt).toLocaleDateString("ko-KR")}
+          </p>
         </section>
 
-        <TaskProperties task={task} />
-        <TaskConversation taskId={task.id} />
-      </div>
+        {/* 속성 그리드 (Status / Priority / Assignees / Due) */}
+        <TaskProperties task={localTask} onUpdate={handleUpdate} />
 
-      <MessageComposer placeholderTarget="this task" variant="thread" />
-
-      <div className="flex items-center gap-2 border-t border-border-subtle px-5 py-3">
-        <button
-          type="button"
-          className="rounded-md border border-border-subtle bg-surface-elevated px-3 py-1.5 text-xs font-medium text-fg-secondary hover:text-fg-primary"
-        >
-          Mark in review
-        </button>
-        <button
-          type="button"
-          className="rounded-md border border-border-subtle bg-surface-elevated px-3 py-1.5 text-xs font-medium text-fg-secondary hover:text-fg-primary"
-        >
-          Reassign
-        </button>
-        <button
-          type="button"
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-accent-subtle px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/30"
-        >
-          <SparklesIcon className="size-3.5" />
-          Summarize thread
-        </button>
+        {/* 설명 (추후 Tiptap 연결) */}
+        {localTask.description ? (
+          <section className="px-5 py-4 text-sm text-fg-secondary">
+            <p className="whitespace-pre-wrap">
+              {typeof localTask.description === "string"
+                ? localTask.description
+                : JSON.stringify(localTask.description)}
+            </p>
+          </section>
+        ) : (
+          <section className="px-5 py-4 text-sm text-fg-tertiary">
+            설명 없음
+          </section>
+        )}
       </div>
     </aside>
   );

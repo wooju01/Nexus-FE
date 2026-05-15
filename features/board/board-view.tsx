@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { FilterIcon, PlusIcon } from "@/components/icons";
@@ -7,6 +8,7 @@ import { getAccessToken } from "@/lib/auth/tokens";
 import type { Project } from "@/lib/api/project";
 import {
   createTaskApi,
+  getTaskApi,
   getTasksApi,
   type Task,
   type TaskPriority,
@@ -14,6 +16,7 @@ import {
 } from "@/lib/api/task";
 
 import { BoardColumn } from "./board-column";
+import { TaskDetailPane } from "./task-detail-pane";
 
 type BoardViewProps = {
   project: Project | null;
@@ -35,10 +38,40 @@ const COLUMNS: ColumnDef[] = [
 ];
 
 export function BoardView({ project, selectedTaskId }: BoardViewProps) {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
   const boardPath = project ? `/projects/${project.id}` : "";
+
+  // selectedTaskId가 바뀌면 상세 태스크를 API로 가져옴
+  useEffect(() => {
+    if (!selectedTaskId) {
+      setSelectedTask(null);
+      return;
+    }
+    const token = getAccessToken();
+    if (!token) return;
+    let cancelled = false;
+    getTaskApi(token, selectedTaskId)
+      .then((t) => { if (!cancelled) setSelectedTask(t); })
+      .catch(() => { if (!cancelled) setSelectedTask(null); });
+    return () => { cancelled = true; };
+  }, [selectedTaskId]);
+
+  // 상세 패널에서 status/priority 변경 → tasks 배열도 동기화
+  function handleTaskUpdated(updated: Task) {
+    setSelectedTask(updated);
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  }
+
+  // 상세 패널에서 삭제 → tasks 배열에서 제거 후 보드로 이동
+  function handleTaskDeleted(taskId: string) {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setSelectedTask(null);
+    if (boardPath) router.push(boardPath);
+  }
 
   const fetchTasks = useCallback(async () => {
     if (!project) return;
@@ -114,6 +147,15 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
           ))}
         </div>
       </section>
+
+      {selectedTask ? (
+        <TaskDetailPane
+          task={selectedTask}
+          closeHref={boardPath}
+          onTaskUpdated={handleTaskUpdated}
+          onTaskDeleted={handleTaskDeleted}
+        />
+      ) : null}
 
       {showCreate ? (
         <CreateTaskModal

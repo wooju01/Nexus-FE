@@ -50,14 +50,18 @@ export function TabButton({ children, active }: TabButtonProps) {
 type PaneIconButtonProps = {
   children: React.ReactNode;
   title: string;
+  onClick?: () => void;
+  disabled?: boolean;
 };
 
-export function PaneIconButton({ children, title }: PaneIconButtonProps) {
+export function PaneIconButton({ children, title, onClick, disabled }: PaneIconButtonProps) {
   return (
     <button
       type="button"
-      title={`${title} — 준비 중`}
-      className="flex size-7 items-center justify-center rounded text-fg-tertiary hover:bg-surface-elevated hover:text-fg-primary"
+      title={onClick ? title : `${title} — 준비 중`}
+      onClick={onClick}
+      disabled={disabled}
+      className="flex size-7 items-center justify-center rounded text-fg-tertiary hover:bg-surface-elevated hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>

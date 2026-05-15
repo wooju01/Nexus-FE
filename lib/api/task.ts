@@ -29,6 +29,7 @@ export type Task = {
   creator: TaskUser;
   assignees: Array<{ userId: string; user: TaskUser }>;
   labels: Array<{ labelId: string; label: { id: string; name: string; color: string } }>;
+  description?: string | null;
   _count?: { comments: number; subTasks: number };
 };
 
