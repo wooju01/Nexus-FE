@@ -103,10 +103,10 @@ export function TaskProperties({ task, onUpdate }: TaskPropertiesProps) {
         </span>
       </Row>
 
-      {task.labels.length > 0 ? (
+      {(task.labels ?? []).length > 0 ? (
         <Row label="Labels">
           <div className="flex flex-wrap gap-1">
-            {task.labels.map((l) => (
+            {(task.labels ?? []).map((l) => (
               <span
                 key={l.labelId}
                 className="rounded-full bg-surface-elevated px-2 py-0.5 text-[11px] text-fg-secondary"

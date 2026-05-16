@@ -40,7 +40,7 @@ export function TaskCard({ task, selectHref, isSelected }: TaskCardProps) {
 
       <h3 className="text-sm leading-snug text-fg-primary">{task.title}</h3>
 
-      {task.labels.length > 0 ? (
+      {(task.labels ?? []).length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {task.labels.map((l) => (
             <span
