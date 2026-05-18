@@ -29,6 +29,22 @@ export async function getWorkspacesApi(accessToken: string): Promise<Workspace[]
   return handleResponse<Workspace[]>(res);
 }
 
+export type UnreadSummaryItem = {
+  channelId: string;
+  channelType: string;
+  unreadCount: number;
+};
+
+export async function getUnreadSummaryApi(
+  accessToken: string,
+  workspaceId: string,
+): Promise<UnreadSummaryItem[]> {
+  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/unread-summary`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<UnreadSummaryItem[]>(res);
+}
+
 // POST 워크스페이스 생성
 export async function createWorkspaceApi(
   accessToken: string,
