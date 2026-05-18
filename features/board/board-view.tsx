@@ -2,6 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 
 import { FilterIcon, PlusIcon } from "@/components/icons";
 import { getAccessToken } from "@/lib/auth/tokens";
@@ -10,12 +19,14 @@ import {
   createTaskApi,
   getTaskApi,
   getTasksApi,
+  updateTaskApi,
   type Task,
   type TaskPriority,
   type TaskStatus,
 } from "@/lib/api/task";
 
 import { BoardColumn } from "./board-column";
+import { TaskCard } from "./task-card";
 import { TaskDetailPane } from "./task-detail-pane";
 
 type BoardViewProps = {
@@ -42,6 +53,45 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [draggingTask, setDraggingTask] = useState<Task | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    const task = tasks.find((t) => t.id === event.active.id);
+    setDraggingTask(task ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDraggingTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const destColumnKey = over.id as string;
+    const destCol = COLUMNS.find((c) => c.key === destColumnKey);
+    if (!destCol) return;
+
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || task.status === destCol.status) return;
+
+    const prevStatus = task.status;
+    // 낙관적 업데이트
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: destCol.status } : t)),
+    );
+
+    const token = getAccessToken();
+    if (!token) return;
+    updateTaskApi(token, taskId, { status: destCol.status }).catch(() => {
+      // 실패 시 롤백
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: prevStatus } : t)),
+      );
+    });
+  }
 
   const boardPath = project ? `/projects/${project.id}` : "";
 
@@ -104,6 +154,11 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
   }
 
   return (
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
     <div className="flex h-full min-h-0 flex-1">
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
@@ -165,6 +220,11 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
         />
       ) : null}
     </div>
+
+    <DragOverlay>
+      {draggingTask ? <TaskCard task={draggingTask} isDragOverlay /> : null}
+    </DragOverlay>
+  </DndContext>
   );
 }
 

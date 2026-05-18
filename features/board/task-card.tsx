@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useDraggable } from "@dnd-kit/core";
 
 import { MessageSquareIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
@@ -12,14 +13,27 @@ type TaskCardProps = {
   task: Task;
   selectHref?: string;
   isSelected?: boolean;
+  isDragOverlay?: boolean;
 };
 
-export function TaskCard({ task, selectHref, isSelected }: TaskCardProps) {
+export function TaskCard({ task, selectHref, isSelected, isDragOverlay }: TaskCardProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task },
+    disabled: isDragOverlay,
+  });
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
   const cardClass = cn(
     "group flex flex-col gap-2 rounded-lg border bg-surface-base p-3 shadow-sm transition-colors",
     isSelected
       ? "border-accent ring-1 ring-accent/40"
       : "border-border-subtle hover:border-border-default",
+    isDragging && "opacity-0",
+    isDragOverlay && "shadow-xl rotate-1 cursor-grabbing",
   );
 
   const dueLabel = task.dueDate
@@ -42,7 +56,7 @@ export function TaskCard({ task, selectHref, isSelected }: TaskCardProps) {
 
       {(task.labels ?? []).length > 0 ? (
         <div className="flex flex-wrap gap-1">
-          {task.labels.map((l) => (
+          {(task.labels ?? []).map((l) => (
             <span
               key={l.labelId}
               className="rounded-full bg-surface-elevated px-2 py-0.5 text-[11px] text-fg-secondary"
@@ -55,7 +69,7 @@ export function TaskCard({ task, selectHref, isSelected }: TaskCardProps) {
 
       <footer className="mt-1 flex items-center justify-between">
         <div className="flex -space-x-1.5">
-          {task.assignees.map(({ user }) => (
+          {(task.assignees ?? []).map(({ user }) => (
             <Avatar
               key={user.id}
               initials={user.name.slice(0, 2).toUpperCase()}
@@ -80,10 +94,14 @@ export function TaskCard({ task, selectHref, isSelected }: TaskCardProps) {
   if (selectHref) {
     return (
       <Link
-        href={selectHref}
+        ref={setNodeRef}
+        style={style}
+        href={isDragging ? "#" : selectHref}
         aria-current={isSelected ? "true" : undefined}
         aria-label={`NX-${task.number} ${task.title}`}
         className={cardClass}
+        {...attributes}
+        {...listeners}
       >
         {body}
       </Link>
@@ -92,10 +110,12 @@ export function TaskCard({ task, selectHref, isSelected }: TaskCardProps) {
 
   return (
     <article
+      ref={setNodeRef}
+      style={style}
       className={cardClass}
-      role="button"
-      tabIndex={0}
       aria-label={`NX-${task.number} ${task.title}`}
+      {...attributes}
+      {...listeners}
     >
       {body}
     </article>

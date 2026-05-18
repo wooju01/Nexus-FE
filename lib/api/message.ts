@@ -142,6 +142,21 @@ export async function removeReactionApi(
   });
 }
 
+// POST /channels/:channelId/read-markers — 채널 진입 시 현재 시점으로 읽음 처리
+export async function markChannelReadApi(
+  accessToken: string,
+  channelId: string,
+): Promise<void> {
+  await fetch(`${API_URL}/channels/${channelId}/read-markers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({}),
+  });
+}
+
 // POST /channels/:channelId/read-markers
 export async function updateReadMarkerApi(
   accessToken: string,

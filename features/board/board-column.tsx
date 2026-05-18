@@ -1,3 +1,5 @@
+import { useDroppable } from "@dnd-kit/core";
+
 import { PlusIcon } from "@/components/icons";
 import type { Task } from "@/lib/api/task";
 import { cn } from "@/lib/utils/cn";
@@ -14,9 +16,6 @@ type BoardColumnProps = {
   selectedTaskId?: string;
 };
 
-/**
- * 컬럼별 헤더 액센트 색. Linear-style로 상태를 시각 구분.
- */
 const COLUMN_DOT_CLASS: Record<BoardColumnKey, string> = {
   Backlog: "bg-status-backlog",
   "To do": "bg-status-todo",
@@ -34,6 +33,8 @@ export function BoardColumn({
 }: BoardColumnProps) {
   const count = tasks.length;
   const isOverLimit = wipLimit !== undefined && count > wipLimit;
+
+  const { setNodeRef, isOver } = useDroppable({ id: columnKey });
 
   return (
     <section
@@ -68,9 +69,18 @@ export function BoardColumn({
         </button>
       </header>
 
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "flex flex-1 flex-col gap-2 overflow-y-auto p-2 transition-colors",
+          isOver && "bg-surface-elevated/50 ring-1 ring-inset ring-accent/30",
+        )}
+      >
         {tasks.length === 0 ? (
-          <p className="px-2 py-6 text-center text-xs text-fg-tertiary">
+          <p className={cn(
+            "px-2 py-6 text-center text-xs transition-opacity",
+            isOver ? "text-fg-tertiary opacity-0" : "text-fg-tertiary",
+          )}>
             비어있어요.
           </p>
         ) : (
@@ -81,7 +91,6 @@ export function BoardColumn({
               selectHref={getSelectHref ? getSelectHref(t.id) : undefined}
               isSelected={t.id === selectedTaskId}
             />
-
           ))
         )}
       </div>

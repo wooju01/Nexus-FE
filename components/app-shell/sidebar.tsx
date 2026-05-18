@@ -20,6 +20,9 @@ import { getProfileApi } from "@/lib/api/auth";
 import { getChannelsApi, type Channel } from "@/lib/api/channel";
 import { getDmsApi, type DmChannel } from "@/lib/api/dm";
 import { getProjectsApi, type Project } from "@/lib/api/project";
+import { getUnreadSummaryApi } from "@/lib/api/workspace";
+import { markChannelReadApi } from "@/lib/api/message";
+import { getSocket } from "@/lib/ws/socket";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
 import { InviteModal } from "@/features/invitation/invite-modal";
 import { DmStartModal } from "@/features/dm/dm-start-modal";
@@ -48,6 +51,7 @@ export function Sidebar() {
   const [dms, setDms] = useState<DmChannel[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const token = getAccessToken();
@@ -71,6 +75,38 @@ export function Sidebar() {
     getProjectsApi(token, currentWorkspace.id)
       .then(setProjects)
       .catch(console.error);
+  }, [currentWorkspace]);
+
+  // 초기 unread 카운트 fetch + WebSocket 구독
+  useEffect(() => {
+    if (!currentWorkspace) return;
+    const token = getAccessToken();
+    if (!token) return;
+
+    // 초기 안 읽음 요약 fetch
+    getUnreadSummaryApi(token, currentWorkspace.id)
+      .then((items) => {
+        const counts: Record<string, number> = {};
+        items.forEach((item) => { counts[item.channelId] = item.unreadCount; });
+        setUnreadCounts(counts);
+      })
+      .catch(() => {});
+
+    // WebSocket 연결 + message.created 수신
+    const socket = getSocket(token);
+
+    function onMessageCreated(msg: { channelId: string; authorId?: string }) {
+      // 현재 보고 있는 채널이면 카운트 올리지 않음
+      const currentChannelId = window.location.pathname.split("/channels/")[1];
+      if (msg.channelId === currentChannelId) return;
+      setUnreadCounts((prev) => ({
+        ...prev,
+        [msg.channelId]: (prev[msg.channelId] ?? 0) + 1,
+      }));
+    }
+
+    socket.on("message.created", onMessageCreated);
+    return () => { socket.off("message.created", onMessageCreated); };
   }, [currentWorkspace]);
 
   function refreshDms() {
@@ -138,11 +174,19 @@ export function Sidebar() {
             {channels.map((c) => {
               const href = `/channels/${c.id}`;
               const isActive = pathname === href;
+              const unread = unreadCounts[c.id] ?? 0;
               return (
                 <li key={c.id}>
                   <Link
                     href={href}
                     aria-current={isActive ? "page" : undefined}
+                    onClick={() => {
+                      if (unread > 0) {
+                        setUnreadCounts((prev) => ({ ...prev, [c.id]: 0 }));
+                        const token = getAccessToken();
+                        if (token) markChannelReadApi(token, c.id).catch(() => {});
+                      }
+                    }}
                     className={cn(
                       "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                       isActive
@@ -152,6 +196,7 @@ export function Sidebar() {
                   >
                     <HashIcon className="size-4 shrink-0 text-fg-tertiary" />
                     <span className="flex-1 truncate text-left">{c.name}</span>
+                    {unread > 0 ? <UnreadBadge count={unread} /> : null}
                   </Link>
                 </li>
               );
@@ -202,11 +247,19 @@ export function Sidebar() {
               if (!other) return null;
               const href = `/channels/${dm.id}`;
               const isActive = pathname === href;
+              const unread = unreadCounts[dm.id] ?? 0;
               return (
                 <li key={dm.id}>
                   <Link
                     href={href}
                     aria-current={isActive ? "page" : undefined}
+                    onClick={() => {
+                      if (unread > 0) {
+                        setUnreadCounts((prev) => ({ ...prev, [dm.id]: 0 }));
+                        const token = getAccessToken();
+                        if (token) markChannelReadApi(token, dm.id).catch(() => {});
+                      }
+                    }}
                     className={cn(
                       "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                       isActive
@@ -222,6 +275,7 @@ export function Sidebar() {
                       name={other.name}
                     />
                     <span className="flex-1 truncate text-left">{other.name}</span>
+                    {unread > 0 ? <UnreadBadge count={unread} /> : null}
                   </Link>
                 </li>
               );
