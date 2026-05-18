@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "outline";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "outline" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -20,6 +20,9 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
     "bg-transparent text-fg-primary hover:bg-surface-elevated disabled:text-fg-tertiary",
   outline:
     "bg-transparent text-fg-primary border border-border-default hover:bg-surface-elevated hover:border-border-strong disabled:opacity-50",
+  // 비가역 액션 (삭제·해지·차단 등) 전용. priority-p1 토큰을 기준 색으로 사용.
+  danger:
+    "bg-priority-p1 text-fg-primary hover:bg-priority-p1/90 active:bg-priority-p1/80 disabled:bg-priority-p1/40",
 };
 
 const SIZE_STYLES: Record<ButtonSize, string> = {

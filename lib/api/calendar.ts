@@ -1,27 +1,45 @@
-import {
-  CALENDAR_EVENTS_MOCK,
-  getCalendarEvent,
-  listCalendarEventsInRange,
-} from "@/lib/mocks/calendar-events";
+/**
+ * 캘린더 API 클라이언트.
+ *
+ * 팀 컨벤션 (lib/api/auth.ts·workspace.ts·invitations.ts) 그대로 따른다:
+ *   - process.env.NEXT_PUBLIC_API_URL 베이스 사용
+ *   - 토큰은 호출 시점에 인자로 명시 전달 (자동 주입 X)
+ *   - 응답 비-OK 시 BE 에러 메시지 그대로 throw
+ *
+ * BE 라우트:
+ *   list   → GET    /workspaces/:workspaceId/calendar/events?from=&to=
+ *   getOne → GET    /workspaces/:workspaceId/calendar/events/:eventId
+ *   create → POST   /workspaces/:workspaceId/calendar/events
+ *   update → PATCH  /workspaces/:workspaceId/calendar/events/:eventId
+ *   delete → DELETE /workspaces/:workspaceId/calendar/events/:eventId
+ *
+ * 응답 셰이프는 BE 의 `CalendarEventResponse` 와 FE 의 `CalendarEvent` 가 동일하게
+ * 맞춰져 있어 별도 mapper 없이 그대로 사용한다.
+ */
 
 import type { CalendarEvent, WorkspaceId } from "@/types/domain";
 
-/**
- * 캘린더 BE API 호출 래퍼.
- *
- * 현재는 mock 으로 동작하지만 함수 시그니처는 실 BE 호출과 동일하게 맞춰뒀다.
- * 인증 연동 + 워크스페이스 선택 UI 가 들어오면 내부 구현만 `fetch()` 로 교체하면 됨.
- *
- * 실제 호출 시 매핑되는 BE 엔드포인트 (`v1` prefix 포함):
- *   list   → GET    /v1/workspaces/:workspaceId/calendar/events?from=&to=
- *   getOne → GET    /v1/workspaces/:workspaceId/calendar/events/:eventId
- *   create → POST   /v1/workspaces/:workspaceId/calendar/events
- *   update → PATCH  /v1/workspaces/:workspaceId/calendar/events/:eventId
- *   delete → DELETE /v1/workspaces/:workspaceId/calendar/events/:eventId
- */
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
-// TODO(NX-calendar-api): 인증 토큰 도입 후 process.env.NEXT_PUBLIC_API_BASE_URL 사용.
-// const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/v1";
+type ApiError = {
+  message: string;
+  statusCode?: number;
+};
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (res.ok) {
+    if (res.status === 204) return undefined as unknown as T;
+    return res.json() as Promise<T>;
+  }
+  const err = (await res.json().catch(() => ({}))) as ApiError;
+  throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
+}
+
+function authHeaders(accessToken: string): HeadersInit {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+  };
+}
 
 export type ListEventsParams = {
   workspaceId: WorkspaceId;
@@ -30,25 +48,36 @@ export type ListEventsParams = {
   to: string;
 };
 
+/** GET /workspaces/:id/calendar/events?from=&to= */
 export async function listCalendarEvents(
+  accessToken: string,
   params: ListEventsParams,
 ): Promise<CalendarEvent[]> {
-  // TODO(NX-calendar-api): 실 호출로 교체.
-  //   const res = await authedFetch(
-  //     `${API_BASE_URL}/workspaces/${params.workspaceId}/calendar/events?from=${params.from}&to=${params.to}`,
-  //   );
-  //   return res.json();
-  void params.workspaceId;
-  return Promise.resolve(listCalendarEventsInRange(params.from, params.to));
+  const qs = new URLSearchParams({ from: params.from, to: params.to });
+  const res = await fetch(
+    `${API_URL}/workspaces/${params.workspaceId}/calendar/events?${qs.toString()}`,
+    { headers: authHeaders(accessToken) },
+  );
+  return handleResponse<CalendarEvent[]>(res);
 }
 
+/**
+ * GET /workspaces/:id/calendar/events/:eventId
+ *
+ * 404 시 null 반환 — 잘못된 eventId 쿼리에 빈 우측 패널 표시 가능.
+ * 그 외 에러는 throw.
+ */
 export async function getCalendarEventById(
+  accessToken: string,
   workspaceId: WorkspaceId,
   eventId: string,
 ): Promise<CalendarEvent | null> {
-  void workspaceId;
-  // TODO(NX-calendar-api): 실 호출로 교체.
-  return Promise.resolve(getCalendarEvent(eventId) ?? null);
+  const res = await fetch(
+    `${API_URL}/workspaces/${workspaceId}/calendar/events/${eventId}`,
+    { headers: authHeaders(accessToken) },
+  );
+  if (res.status === 404) return null;
+  return handleResponse<CalendarEvent>(res);
 }
 
 export type CreateEventInput = {
@@ -62,70 +91,61 @@ export type CreateEventInput = {
   participantIds?: string[];
 };
 
+/** POST /workspaces/:id/calendar/events */
 export async function createCalendarEvent(
+  accessToken: string,
   workspaceId: WorkspaceId,
   input: CreateEventInput,
 ): Promise<CalendarEvent> {
-  // TODO(NX-calendar-api): 실 호출로 교체.
-  //   const res = await authedFetch(
-  //     `${API_BASE_URL}/workspaces/${workspaceId}/calendar/events`,
-  //     { method: "POST", body: JSON.stringify(input) },
-  //   );
-  //   return res.json();
-  return Promise.resolve({
-    id: `evt_${Math.random().toString(36).slice(2, 10)}`,
-    workspaceId,
-    createdById: "u-sejun",
-    title: input.title,
-    description: input.description ?? null,
-    startAt: input.startAt,
-    endAt: input.endAt,
-    allDay: input.allDay ?? false,
-    location: input.location ?? null,
-    color: input.color ?? null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    participants: [
-      {
-        userId: "u-sejun",
-        status: "ACCEPTED",
-        user: { id: "u-sejun", name: "Sejun Yun", avatar: null },
+  const res = await fetch(
+    `${API_URL}/workspaces/${workspaceId}/calendar/events`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(accessToken),
       },
-    ],
-  });
+      body: JSON.stringify(input),
+    },
+  );
+  return handleResponse<CalendarEvent>(res);
 }
 
 export type UpdateEventInput = Partial<CreateEventInput>;
 
+/** PATCH /workspaces/:id/calendar/events/:eventId */
 export async function updateCalendarEvent(
+  accessToken: string,
   workspaceId: WorkspaceId,
   eventId: string,
   input: UpdateEventInput,
-): Promise<CalendarEvent | null> {
-  void workspaceId;
-  void input;
-  // TODO(NX-calendar-api): 실 호출로 교체.
-  return Promise.resolve(getCalendarEvent(eventId) ?? null);
+): Promise<CalendarEvent> {
+  const res = await fetch(
+    `${API_URL}/workspaces/${workspaceId}/calendar/events/${eventId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(accessToken),
+      },
+      body: JSON.stringify(input),
+    },
+  );
+  return handleResponse<CalendarEvent>(res);
 }
 
+/** DELETE /workspaces/:id/calendar/events/:eventId */
 export async function deleteCalendarEvent(
+  accessToken: string,
   workspaceId: WorkspaceId,
   eventId: string,
 ): Promise<void> {
-  void workspaceId;
-  void eventId;
-  // TODO(NX-calendar-api): 실 호출로 교체.
-  return Promise.resolve();
+  const res = await fetch(
+    `${API_URL}/workspaces/${workspaceId}/calendar/events/${eventId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(accessToken),
+    },
+  );
+  await handleResponse<void>(res);
 }
-
-/**
- * 인증·워크스페이스 선택 UI 도입 전까지 캘린더가 임시로 사용하는 상수.
- * BE 연결 시 `useCurrentWorkspace()` 같은 훅으로 교체.
- */
-export const TEMP_WORKSPACE_ID = "ws_temp";
-
-/**
- * 페이지 단에서 mock 시드 직접 노출 (SSR 에서 fetch 없이 첫 렌더 가능).
- * 실 BE 도입 후엔 page.tsx 가 `listCalendarEvents` 를 await 하는 형태로 교체.
- */
-export const ALL_MOCK_EVENTS = CALENDAR_EVENTS_MOCK;

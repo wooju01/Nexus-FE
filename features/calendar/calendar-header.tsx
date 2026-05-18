@@ -9,18 +9,29 @@ import { addMonths, formatMonthHeader, toDateKey } from "./calendar-utils";
 
 type CalendarHeaderProps = {
   viewMonth: Date;
+  /**
+   * + New event 버튼 활성화 여부.
+   * 워크스페이스 로딩 전이면 false 로 두고 disabled 처리.
+   */
+  canCreate?: boolean;
+  /** + New event 클릭 시 호출 — 상위에서 모달 토글. */
+  onNewEvent?: () => void;
 };
 
 /**
  * 캘린더 상단 컨트롤바.
  *
  * - 좌측: ◀ ▶ + 월 이름 + Today
- * - 우측: + New event (현재는 placeholder, M2 에서 모달 연결)
+ * - 우측: + New event (활성화 시 클릭하면 onNewEvent 호출)
  *
  * 월 이동은 `?date=YYYY-MM-DD` 쿼리스트링 변경으로 처리.
  * 페이지가 `searchParams.date` 를 받아 viewMonth 를 결정하므로 별도 client state 불필요.
  */
-export function CalendarHeader({ viewMonth }: CalendarHeaderProps) {
+export function CalendarHeader({
+  viewMonth,
+  canCreate = false,
+  onNewEvent,
+}: CalendarHeaderProps) {
   const prev = toDateKey(addMonths(viewMonth, -1));
   const next = toDateKey(addMonths(viewMonth, 1));
   const today = toDateKey(new Date());
@@ -58,13 +69,13 @@ export function CalendarHeader({ viewMonth }: CalendarHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* TODO(NX-calendar-create): 모달 폼 연결. v0 에선 placeholder. */}
         <Button
           type="button"
           variant="primary"
           size="sm"
-          disabled
-          title="이벤트 만들기 — 준비 중"
+          onClick={onNewEvent}
+          disabled={!canCreate}
+          title={canCreate ? "이벤트 만들기" : "워크스페이스 로딩 중"}
         >
           <PlusIcon className="mr-1 size-4" />
           New event

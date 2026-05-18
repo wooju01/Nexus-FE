@@ -1,7 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
-import { CalendarIcon, XIcon } from "@/components/icons";
+import { CalendarIcon, EditIcon, TrashIcon, XIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils/cn";
 
 import type { CalendarEvent, RsvpStatus } from "@/types/domain";
@@ -12,6 +17,10 @@ type CalendarEventPaneProps = {
   event: CalendarEvent;
   /** 닫기 버튼이 가리킬 URL — 보통 캘린더 루트(`/calendar?date=...`). */
   closeHref: string;
+  /** 수정 버튼 클릭 — 상위에서 EditModal 열기. 미지정 시 버튼 숨김. */
+  onEdit?: () => void;
+  /** 삭제 핸들러 — Promise<void>. 호출 측에서 BE 호출 + events 리스트 갱신. */
+  onDelete?: () => Promise<void> | void;
 };
 
 const RSVP_LABEL: Record<RsvpStatus, string> = {
@@ -31,10 +40,48 @@ const RSVP_CLASS: Record<RsvpStatus, string> = {
 /**
  * 캘린더 이벤트 우측 상세 패널.
  *
- * 보드 `TaskDetailPane` 와 동일한 패턴 — `?event=<id>` 쿼리스트링이 있을 때만 마운트.
+ * - `?event=<id>` 쿼리가 있을 때만 마운트
+ * - 헤더 우측에 수정 / 삭제 액션 버튼 (props 가 있을 때만 노출)
+ *   삭제는 confirm 다이얼로그 통과해야 호출
  */
-export function CalendarEventPane({ event, closeHref }: CalendarEventPaneProps) {
+export function CalendarEventPane({
+  event,
+  closeHref,
+  onEdit,
+  onDelete,
+}: CalendarEventPaneProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  function openConfirm() {
+    setDeleteError(null);
+    setIsConfirmOpen(true);
+  }
+
+  function closeConfirm() {
+    if (isDeleting) return;
+    setIsConfirmOpen(false);
+  }
+
+  async function handleConfirmDelete() {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete();
+      setIsConfirmOpen(false);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "삭제 중 오류가 발생했습니다.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
+    <>
     <aside
       aria-label={`이벤트 ${event.title} 상세`}
       className="flex w-[24rem] shrink-0 flex-col border-l border-border-subtle bg-surface-base"
@@ -50,14 +97,40 @@ export function CalendarEventPane({ event, closeHref }: CalendarEventPaneProps) 
           />
           <span className="text-xs font-medium text-fg-tertiary">이벤트</span>
         </div>
-        <Link
-          href={closeHref}
-          aria-label="패널 닫기"
-          scroll={false}
-          className="flex size-7 items-center justify-center rounded-md text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
-        >
-          <XIcon className="size-4" />
-        </Link>
+        <div className="flex items-center gap-1">
+          {onEdit ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onEdit}
+              disabled={isDeleting}
+              aria-label="이벤트 수정"
+              className="text-fg-tertiary hover:text-fg-primary"
+            >
+              <EditIcon className="size-4" />
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={openConfirm}
+              disabled={isDeleting}
+              aria-label="이벤트 삭제"
+              className="text-fg-tertiary hover:text-priority-p1"
+            >
+              <TrashIcon className="size-4" />
+            </Button>
+          ) : null}
+          <Link
+            href={closeHref}
+            aria-label="패널 닫기"
+            scroll={false}
+            className="flex size-7 items-center justify-center rounded-md text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
+          >
+            <XIcon className="size-4" />
+          </Link>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
@@ -77,6 +150,12 @@ export function CalendarEventPane({ event, closeHref }: CalendarEventPaneProps) 
         {event.description ? (
           <p className="mt-4 whitespace-pre-line text-sm leading-6 text-fg-secondary">
             {event.description}
+          </p>
+        ) : null}
+
+        {deleteError ? (
+          <p role="alert" className="mt-4 text-sm text-priority-p1">
+            {deleteError}
           </p>
         ) : null}
 
@@ -120,5 +199,20 @@ export function CalendarEventPane({ event, closeHref }: CalendarEventPaneProps) 
         </section>
       </div>
     </aside>
+
+    {onDelete ? (
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="이벤트를 삭제할까요?"
+        description={`"${event.title}" 이벤트가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        danger
+        isLoading={isDeleting}
+        onCancel={closeConfirm}
+        onConfirm={handleConfirmDelete}
+      />
+    ) : null}
+    </>
   );
 }
