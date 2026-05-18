@@ -1,75 +1,96 @@
-import Link from "next/link";
+"use client";
 
-import { HashIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
-import { LabelPill } from "@/components/ui/label-pill";
 import { PriorityPill } from "@/components/ui/priority-pill";
-import { getChannel } from "@/lib/mocks/channels";
-import { getProject } from "@/lib/mocks/projects";
-import { getUser } from "@/lib/mocks/users";
+import type { Task, TaskPriority, TaskStatus } from "@/lib/api/task";
 import { cn } from "@/lib/utils/cn";
-
-import type { Task, TaskStatus } from "@/types/domain";
 
 import { Row } from "./task-detail-atoms";
 
-/**
- * Task 상세 우측 패인 상단의 속성 그리드(Status / Priority / Assignees / Due / Project / Labels / Linked channel).
- * 프로젝트/채널 링크는 존재할 때만 렌더하고, 없으면 해당 행을 생략.
- */
+// BE enum → 화면 표시 문자열
+const STATUS_LABEL: Record<TaskStatus, string> = {
+  BACKLOG: "Backlog",
+  TODO: "To do",
+  IN_PROGRESS: "In progress",
+  IN_REVIEW: "In review",
+  DONE: "Done",
+};
 
 const STATUS_DOT_CLASS: Record<TaskStatus, string> = {
-  Backlog: "bg-status-backlog",
-  "To do": "bg-status-todo",
-  "In progress": "bg-status-in-progress",
-  "In review": "bg-status-in-review",
-  Done: "bg-status-done",
+  BACKLOG: "bg-status-backlog",
+  TODO: "bg-status-todo",
+  IN_PROGRESS: "bg-status-in-progress",
+  IN_REVIEW: "bg-status-in-review",
+  DONE: "bg-status-done",
 };
+
+const STATUS_OPTIONS: TaskStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"];
+const PRIORITY_OPTIONS: TaskPriority[] = ["P1", "P2", "P3"];
 
 type TaskPropertiesProps = {
   task: Task;
+  // 부모(TaskDetailPane)에서 PATCH 요청을 처리하고 task 상태를 갱신
+  onUpdate: (patch: { status?: TaskStatus; priority?: TaskPriority }) => void;
 };
 
-export function TaskProperties({ task }: TaskPropertiesProps) {
-  const assignees = task.assigneeIds
-    .map((id) => getUser(id))
-    .filter((u): u is NonNullable<typeof u> => Boolean(u));
-  const project = getProject(task.projectId);
-  const linkedChannel = task.linkedChannelId
-    ? getChannel(task.linkedChannelId)
-    : undefined;
+export function TaskProperties({ task, onUpdate }: TaskPropertiesProps) {
+  const dueLabel = task.dueDate
+    ? new Date(task.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })
+    : null;
 
   return (
     <dl className="grid grid-cols-[7rem_1fr] gap-y-2.5 border-y border-border-subtle bg-surface-subtle/40 px-5 py-4 text-sm">
+
+      {/* Status — 드롭다운으로 바로 변경 가능 */}
       <Row label="Status">
-        <span className="inline-flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <span
             aria-hidden="true"
-            className={cn("size-2 rounded-sm", STATUS_DOT_CLASS[task.status])}
+            className={cn("size-2 shrink-0 rounded-sm", STATUS_DOT_CLASS[task.status])}
           />
-          <span className="text-fg-primary">{task.status}</span>
-        </span>
+          <select
+            value={task.status}
+            onChange={(e) => onUpdate({ status: e.target.value as TaskStatus })}
+            className="bg-transparent text-sm text-fg-primary focus:outline-none"
+          >
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+            ))}
+          </select>
+        </div>
       </Row>
 
+      {/* Priority — 드롭다운으로 바로 변경 가능 */}
       <Row label="Priority">
-        <PriorityPill priority={task.priority} />
+        <div className="flex items-center gap-2">
+          <PriorityPill priority={task.priority} />
+          <select
+            value={task.priority}
+            onChange={(e) => onUpdate({ priority: e.target.value as TaskPriority })}
+            className="bg-transparent text-sm text-fg-primary focus:outline-none"
+          >
+            {PRIORITY_OPTIONS.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
       </Row>
 
+      {/* Assignees — API 응답의 assignees 배열 직접 사용 (목 제거) */}
       <Row label="Assignees">
-        {assignees.length === 0 ? (
+        {task.assignees.length === 0 ? (
           <span className="text-fg-tertiary">미지정</span>
         ) : (
           <ul className="flex flex-wrap gap-x-3 gap-y-1">
-            {assignees.map((u) => (
-              <li key={u.id} className="flex items-center gap-1.5">
+            {task.assignees.map(({ user }) => (
+              <li key={user.id} className="flex items-center gap-1.5">
                 <Avatar
-                  initials={u.initials}
-                  color={u.avatarColor}
+                  initials={user.name.slice(0, 2).toUpperCase()}
+                  color="blue"
                   size="xs"
-                  presence={u.presence}
-                  name={u.name}
+                  name={user.name}
                 />
-                <span className="text-fg-primary">{u.name}</span>
+                <span className="text-fg-primary">{user.name}</span>
               </li>
             ))}
           </ul>
@@ -77,48 +98,26 @@ export function TaskProperties({ task }: TaskPropertiesProps) {
       </Row>
 
       <Row label="Due date">
-        <span className={task.dueLabel ? "text-fg-primary" : "text-fg-tertiary"}>
-          {task.dueLabel ?? "No due date"}
+        <span className={dueLabel ? "text-fg-primary" : "text-fg-tertiary"}>
+          {dueLabel ?? "No due date"}
         </span>
       </Row>
 
-      {project ? (
-        <Row label="Project">
-          <Link
-            href={`/projects/${project.slug}`}
-            className="inline-flex items-center gap-2 text-fg-primary hover:text-accent"
-          >
-            <span
-              aria-hidden="true"
-              className="size-2 shrink-0 rounded-sm bg-sky-500"
-            />
-            {project.name}
-          </Link>
-        </Row>
-      ) : null}
-
-      {task.labels.length > 0 ? (
+      {(task.labels ?? []).length > 0 ? (
         <Row label="Labels">
           <div className="flex flex-wrap gap-1">
-            {task.labels.map((l) => (
-              <LabelPill key={l.name} label={l.name} color={l.color} />
+            {(task.labels ?? []).map((l) => (
+              <span
+                key={l.labelId}
+                className="rounded-full bg-surface-elevated px-2 py-0.5 text-[11px] text-fg-secondary"
+              >
+                {l.label.name}
+              </span>
             ))}
           </div>
         </Row>
       ) : null}
 
-      {linkedChannel ? (
-        <Row label="Linked channel">
-          <Link
-            href={`/channels/${linkedChannel.name}`}
-            className="inline-flex items-center gap-1 text-fg-primary hover:text-accent"
-          >
-            <HashIcon className="size-3.5 text-fg-tertiary" />
-            {linkedChannel.name}
-            <span className="text-xs text-fg-tertiary"> · auto-linked</span>
-          </Link>
-        </Row>
-      ) : null}
     </dl>
   );
 }
