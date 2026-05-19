@@ -115,7 +115,7 @@ export type InboxItem = {
   dueBadge?: "Due Today" | "Overdue";
 };
 
-export type BoardColumnKey = Exclude<TaskStatus, "Done">;
+export type BoardColumnKey = TaskStatus;
 
 export type BoardColumn = {
   key: BoardColumnKey;

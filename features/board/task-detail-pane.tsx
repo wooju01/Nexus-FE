@@ -5,9 +5,18 @@ import { useState } from "react";
 
 import { MoreHorizontalIcon, TrashIcon, XIcon } from "@/components/icons";
 import { getAccessToken } from "@/lib/auth/tokens";
-import { deleteTaskApi, updateTaskApi, type Task, type TaskPriority, type TaskStatus } from "@/lib/api/task";
+import {
+  deleteTaskApi,
+  updateTaskApi,
+  type Task,
+  type UpdateTaskPayload,
+} from "@/lib/api/task";
 
+import { TiptapEditor } from "@/components/editor/tiptap-editor";
+
+import { EditableTitle } from "./editable-title";
 import { PaneIconButton } from "./task-detail-atoms";
+import { TaskConversation } from "./task-conversation";
 import { TaskProperties } from "./task-properties";
 
 type TaskDetailPaneProps = {
@@ -21,8 +30,8 @@ export function TaskDetailPane({ task, closeHref, onTaskUpdated, onTaskDeleted }
   const [localTask, setLocalTask] = useState<Task>(task);
   const [deleting, setDeleting] = useState(false);
 
-  // Status / Priority 변경 → PATCH 요청 후 로컬 상태 + 보드 동기화
-  async function handleUpdate(patch: { status?: TaskStatus; priority?: TaskPriority }) {
+  // 임의 필드 변경 → PATCH 요청 후 로컬 상태 + 보드 동기화
+  async function handleUpdate(patch: UpdateTaskPayload) {
     const token = getAccessToken();
     if (!token) return;
     try {
@@ -75,12 +84,13 @@ export function TaskDetailPane({ task, closeHref, onTaskUpdated, onTaskDeleted }
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        {/* 제목 */}
+        {/* 제목 — 인라인 편집 */}
         <section className="px-5 pb-4 pt-4">
-          <h2 className="text-lg font-semibold leading-snug text-fg-primary">
-            {localTask.title}
-          </h2>
-          <p className="mt-1 text-xs text-fg-tertiary">
+          <EditableTitle
+            value={localTask.title}
+            onSave={(next) => handleUpdate({ title: next })}
+          />
+          <p className="mt-1 px-2 text-xs text-fg-tertiary">
             {localTask.creator.name} 생성 ·{" "}
             {new Date(localTask.createdAt).toLocaleDateString("ko-KR")}
           </p>
@@ -89,20 +99,19 @@ export function TaskDetailPane({ task, closeHref, onTaskUpdated, onTaskDeleted }
         {/* 속성 그리드 (Status / Priority / Assignees / Due) */}
         <TaskProperties task={localTask} onUpdate={handleUpdate} />
 
-        {/* 설명 (추후 Tiptap 연결) */}
-        {localTask.description ? (
-          <section className="px-5 py-4 text-sm text-fg-secondary">
-            <p className="whitespace-pre-wrap">
-              {typeof localTask.description === "string"
-                ? localTask.description
-                : JSON.stringify(localTask.description)}
-            </p>
-          </section>
-        ) : (
-          <section className="px-5 py-4 text-sm text-fg-tertiary">
-            설명 없음
-          </section>
-        )}
+        {/* 설명 — Tiptap 인라인 편집 (blur 시 저장) */}
+        <section className="px-5 py-4">
+          <TiptapEditor
+            // task.id 가 바뀌면 에디터를 새로 마운트해 새 task 의 description 으로 초기화
+            key={localTask.id}
+            value={(localTask.description ?? null) as never}
+            placeholder="설명을 작성해 주세요…"
+            onBlur={(json) => handleUpdate({ description: json })}
+          />
+        </section>
+
+        {/* 코멘트 (탭 바 + 작성 입력) */}
+        <TaskConversation taskId={localTask.id} />
       </div>
     </aside>
   );
