@@ -24,6 +24,7 @@ export type Task = {
   status: TaskStatus;
   dueDate: string | null;
   columnId: string | null;
+  order: number;
   createdAt: string;
   updatedAt: string;
   creator: TaskUser;
@@ -46,10 +47,15 @@ export type UpdateTaskPayload = {
   title?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
-  dueDate?: string;
+  /** ISO 문자열로 설정, null 이면 마감일 제거. */
+  dueDate?: string | null;
   columnId?: string;
   order?: number;
   assigneeIds?: string[];
+  /** 빈 배열이면 모든 라벨 제거. */
+  labelIds?: string[];
+  /** Tiptap JSON 직접 저장. */
+  description?: unknown;
 };
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {

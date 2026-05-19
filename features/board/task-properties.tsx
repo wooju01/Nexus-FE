@@ -1,10 +1,18 @@
 "use client";
 
+import { XIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { PriorityPill } from "@/components/ui/priority-pill";
-import type { Task, TaskPriority, TaskStatus } from "@/lib/api/task";
+import type {
+  Task,
+  TaskPriority,
+  TaskStatus,
+  UpdateTaskPayload,
+} from "@/lib/api/task";
 import { cn } from "@/lib/utils/cn";
 
+import { AssigneePicker } from "./assignee-picker";
+import { LabelPicker } from "./label-picker";
 import { Row } from "./task-detail-atoms";
 
 // BE enum → 화면 표시 문자열
@@ -30,13 +38,40 @@ const PRIORITY_OPTIONS: TaskPriority[] = ["P1", "P2", "P3"];
 type TaskPropertiesProps = {
   task: Task;
   // 부모(TaskDetailPane)에서 PATCH 요청을 처리하고 task 상태를 갱신
-  onUpdate: (patch: { status?: TaskStatus; priority?: TaskPriority }) => void;
+  onUpdate: (patch: UpdateTaskPayload) => void;
 };
 
+/** Date 객체 → "YYYY-MM-DD" (input[type=date] 호환). */
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function TaskProperties({ task, onUpdate }: TaskPropertiesProps) {
-  const dueLabel = task.dueDate
-    ? new Date(task.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })
-    : null;
+  const dateInputValue = toDateInputValue(task.dueDate);
+
+  function handleDueChange(value: string) {
+    if (!value) {
+      // 빈 값 → 마감일 제거. BE 가 dueDate: null 을 unset 으로 처리.
+      onUpdate({ dueDate: null });
+      return;
+    }
+    // input[type=date] 의 값(YYYY-MM-DD)을 ISO 형식으로 보냄.
+    onUpdate({ dueDate: new Date(value).toISOString() });
+  }
+
+  function handleAssigneesChange(assigneeIds: string[]) {
+    onUpdate({ assigneeIds });
+  }
+
+  function handleLabelsChange(labelIds: string[]) {
+    onUpdate({ labelIds });
+  }
 
   return (
     <dl className="grid grid-cols-[7rem_1fr] gap-y-2.5 border-y border-border-subtle bg-surface-subtle/40 px-5 py-4 text-sm">
@@ -76,47 +111,78 @@ export function TaskProperties({ task, onUpdate }: TaskPropertiesProps) {
         </div>
       </Row>
 
-      {/* Assignees — API 응답의 assignees 배열 직접 사용 (목 제거) */}
+      {/* Assignees — 멤버 추가/제거 (인라인 편집) */}
       <Row label="Assignees">
-        {task.assignees.length === 0 ? (
-          <span className="text-fg-tertiary">미지정</span>
-        ) : (
-          <ul className="flex flex-wrap gap-x-3 gap-y-1">
-            {task.assignees.map(({ user }) => (
-              <li key={user.id} className="flex items-center gap-1.5">
-                <Avatar
-                  initials={user.name.slice(0, 2).toUpperCase()}
-                  color="blue"
-                  size="xs"
-                  name={user.name}
-                />
-                <span className="text-fg-primary">{user.name}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {task.assignees.length === 0 ? (
+            <span className="text-fg-tertiary">미지정</span>
+          ) : (
+            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+              {task.assignees.map(({ user }) => (
+                <li key={user.id} className="flex items-center gap-1.5">
+                  <Avatar
+                    initials={user.name.slice(0, 2).toUpperCase()}
+                    color="blue"
+                    size="xs"
+                    name={user.name}
+                  />
+                  <span className="text-fg-primary">{user.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <AssigneePicker task={task} onChange={handleAssigneesChange} />
+        </div>
       </Row>
 
+      {/* Due date — 인라인 편집 + 지우기 */}
       <Row label="Due date">
-        <span className={dueLabel ? "text-fg-primary" : "text-fg-tertiary"}>
-          {dueLabel ?? "No due date"}
-        </span>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateInputValue}
+            onChange={(e) => handleDueChange(e.target.value)}
+            className="bg-transparent text-sm text-fg-primary focus:outline-none"
+            aria-label="마감일"
+          />
+          {dateInputValue ? (
+            <button
+              type="button"
+              onClick={() => handleDueChange("")}
+              title="마감일 지우기"
+              aria-label="마감일 지우기"
+              className="flex size-5 items-center justify-center rounded text-fg-tertiary hover:bg-surface-elevated hover:text-fg-primary"
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
       </Row>
 
-      {(task.labels ?? []).length > 0 ? (
-        <Row label="Labels">
-          <div className="flex flex-wrap gap-1">
-            {(task.labels ?? []).map((l) => (
-              <span
-                key={l.labelId}
-                className="rounded-full bg-surface-elevated px-2 py-0.5 text-[11px] text-fg-secondary"
-              >
-                {l.label.name}
-              </span>
-            ))}
-          </div>
-        </Row>
-      ) : null}
+      {/* Labels — 라벨 추가/제거 (인라인 편집) */}
+      <Row label="Labels">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {(task.labels ?? []).length === 0 ? (
+            <span className="text-fg-tertiary">없음</span>
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              {(task.labels ?? []).map((l) => (
+                <span
+                  key={l.labelId}
+                  className="rounded-full px-2 py-0.5 text-[11px] text-fg-primary"
+                  style={{
+                    backgroundColor: `${l.label.color}22`,
+                    color: l.label.color,
+                  }}
+                >
+                  {l.label.name}
+                </span>
+              ))}
+            </div>
+          )}
+          <LabelPicker task={task} onChange={handleLabelsChange} />
+        </div>
+      </Row>
 
     </dl>
   );

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useDraggable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { MessageSquareIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
@@ -13,19 +14,31 @@ type TaskCardProps = {
   task: Task;
   selectHref?: string;
   isSelected?: boolean;
+  /** DragOverlay 안에서 렌더할 때 true. sortable 비활성화 + 회전/그림자 효과. */
   isDragOverlay?: boolean;
 };
 
 export function TaskCard({ task, selectHref, isSelected, isDragOverlay }: TaskCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  // useSortable 은 useDraggable 의 슈퍼셋. transform/transition 으로 부드러운 정렬 애니메이션 제공.
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: task.id,
-    data: { task },
+    data: { type: "task", task },
     disabled: isDragOverlay,
   });
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+  const style = isDragOverlay
+    ? undefined
+    : {
+        transform: CSS.Transform.toString(transform),
+        transition,
+      };
 
   const cardClass = cn(
     "group flex flex-col gap-2 rounded-lg border bg-surface-base p-3 shadow-sm transition-colors",
