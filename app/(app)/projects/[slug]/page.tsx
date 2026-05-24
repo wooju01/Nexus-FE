@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 
 import { getAccessToken } from "@/lib/auth/tokens";
@@ -33,5 +33,9 @@ export default function ProjectBoardPage({
 
   if (isNotFound) notFound();
 
-  return <BoardView project={project} selectedTaskId={selectedTaskId} />;
+  return (
+    <Suspense fallback={null}>
+      <BoardView project={project} selectedTaskId={selectedTaskId} />
+    </Suspense>
+  );
 }
