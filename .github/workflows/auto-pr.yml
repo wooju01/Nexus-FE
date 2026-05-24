@@ -1,0 +1,255 @@
+name: 자동 PR 생성
+
+on:
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
+      - 'refactor/**'
+      - 'perf/**'
+      - 'docs/**'
+      - 'style/**'
+      - 'test/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 레포 체크아웃
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 기존 PR 확인 및 자동 생성
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+
+          # 이미 이 브랜치에 열린 PR이 있으면 스킵
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "이미 PR #${EXISTING_PR}이 존재합니다. 스킵합니다."
+            exit 0
+          fi
+
+          # ─── 브랜치명 파싱 ───
+          # feat/fe-kanban-dnd → TYPE=feat, SCOPE=fe, DESC=kanban-dnd
+          TYPE=$(echo "$BRANCH" | cut -d'/' -f1)
+          REST=$(echo "$BRANCH" | cut -d'/' -f2-)
+          SCOPE=$(echo "$REST" | cut -d'-' -f1)
+          DESC=$(echo "$REST" | cut -d'-' -f2- | tr '-' ' ')
+
+          # 타입 라벨 매핑
+          case "$TYPE" in
+            feat)     TYPE_LABEL="feat: 새로운 기능" ;;
+            fix)      TYPE_LABEL="fix: 버그 수정" ;;
+            refactor) TYPE_LABEL="refactor: 기능 변경 없는 코드 개선" ;;
+            perf)     TYPE_LABEL="perf: 성능 개선" ;;
+            style)    TYPE_LABEL="style: 코드 포맷팅 (세미콜론, 공백 등)" ;;
+            test)     TYPE_LABEL="test: 테스트 추가/수정" ;;
+            docs)     TYPE_LABEL="docs: 문서 변경" ;;
+            chore)    TYPE_LABEL="chore: 빌드, CI, 의존성 등 기타" ;;
+            *)        TYPE_LABEL="$TYPE" ;;
+          esac
+
+          # ─── 커밋 분석 ───
+          COMMIT_LOG=$(git log "origin/${DEFAULT_BRANCH}..HEAD" --pretty=format:"- %s" 2>/dev/null || echo "- 커밋 정보 없음")
+          COMMIT_COUNT=$(git rev-list --count "origin/${DEFAULT_BRANCH}..HEAD" 2>/dev/null || echo "0")
+
+          # ─── diff 통계 ───
+          DIFF_STAT=$(git diff --stat "origin/${DEFAULT_BRANCH}..HEAD" 2>/dev/null | tail -1 || echo "변경사항 분석 불가")
+          ADDITIONS=$(git diff --numstat "origin/${DEFAULT_BRANCH}..HEAD" 2>/dev/null | awk '{add+=$1} END {print add+0}')
+          DELETIONS=$(git diff --numstat "origin/${DEFAULT_BRANCH}..HEAD" 2>/dev/null | awk '{del+=$2} END {print del+0}')
+          CHANGED_FILES=$(git diff --name-only "origin/${DEFAULT_BRANCH}..HEAD" 2>/dev/null | wc -l | tr -d ' ')
+
+          # ─── 변경된 파일 목록 → 테이블 ───
+          FILE_TABLE=""
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            FILE_TABLE="${FILE_TABLE}| \`${file}\` | |\n"
+          done <<< "$(git diff --name-only "origin/${DEFAULT_BRANCH}..HEAD" 2>/dev/null | head -15)"
+
+          if [ "$CHANGED_FILES" -gt 15 ]; then
+            FILE_TABLE="${FILE_TABLE}| ... 외 $((CHANGED_FILES - 15))개 파일 | |\n"
+          fi
+
+          # ─── PR 제목 (한국어만, Conventional Commit prefix 제거) ───
+          FIRST_COMMIT=$(git log "origin/${DEFAULT_BRANCH}..HEAD" --pretty=format:"%s" --reverse 2>/dev/null | head -1)
+          if [ -n "$FIRST_COMMIT" ]; then
+            PR_TITLE=$(echo "$FIRST_COMMIT" | sed 's/^[a-z]*([^)]*): //')
+          else
+            PR_TITLE="${DESC}"
+          fi
+
+          # ─── PR 본문 생성 ───
+          PR_BODY=$(cat <<EOF
+          ## 관련 이슈
+
+          <!-- NX-123 형식으로 연결. 여러 개면 쉼표로 구분 -->
+          - closes NX-
+
+          ---
+
+          ## 변경 사항
+
+          ${COMMIT_LOG}
+
+          ## 변경 이유
+
+          <!-- "왜" 이 변경이 필요한지 작성해 주세요 -->
+
+          -
+
+          ## 변경 타입
+
+          - [x] ${TYPE_LABEL}
+
+          ---
+
+          ## 구현 상세
+
+          ### 접근 방식
+
+          <!-- 구현 접근 방식을 작성해 주세요 -->
+
+          -
+
+          ### 주요 변경 파일
+
+          | 파일 | 변경 내용 |
+          |------|----------|
+          $(echo -e "$FILE_TABLE")
+
+          ---
+
+          ## 테스트
+
+          ### 테스트 방법
+
+          - [ ] 로컬에서 \`npm run dev\`로 동작 확인
+          - [ ] \`npm run lint\` 통과
+          - [ ] \`npx tsc --noEmit\` 통과
+          - [ ] 관련 테스트 추가/수정 (해당 시)
+
+          ### 테스트 시나리오
+
+          | 시나리오 | 기대 결과 | 확인 |
+          |---------|----------|------|
+          | | | [ ] |
+
+          ---
+
+          ## 스크린샷 / 영상
+
+          <details>
+          <summary>변경 전</summary>
+
+          <!-- 스크린샷 -->
+
+          </details>
+
+          <details>
+          <summary>변경 후</summary>
+
+          <!-- 스크린샷 -->
+
+          </details>
+
+          ---
+
+          ## 리뷰어 참고사항
+
+          <!-- 리뷰 시 특히 봐줬으면 하는 부분 -->
+
+          -
+
+          ---
+
+          ## 체크리스트
+
+          - [ ] PR 제목이 한국어로 작성됨
+          - [ ] 자체 코드 리뷰 완료
+          - [ ] 불필요한 console.log / debugger 제거
+          - [ ] 새 의존성 추가 시 팀원과 논의 완료
+
+          ---
+
+          > **Summary**: ${COMMIT_COUNT}개 커밋 | +${ADDITIONS} -${DELETIONS} | ${CHANGED_FILES}개 파일 변경
+          EOF
+          )
+
+          # 들여쓰기 제거 (HEREDOC 들여쓰기 보정)
+          PR_BODY=$(echo "$PR_BODY" | sed 's/^          //')
+
+          # ─── PR 생성 ───
+          PR_URL=$(gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base "$DEFAULT_BRANCH" \
+            --head "$BRANCH" 2>&1)
+
+          echo "PR이 성공적으로 생성되었습니다!"
+          echo "PR_URL=${PR_URL}" >> "$GITHUB_ENV"
+          echo "PR_TITLE=${PR_TITLE}" >> "$GITHUB_ENV"
+          echo "BRANCH=${BRANCH}" >> "$GITHUB_ENV"
+          echo "DEFAULT_BRANCH=${DEFAULT_BRANCH}" >> "$GITHUB_ENV"
+          echo "COMMIT_COUNT=${COMMIT_COUNT}" >> "$GITHUB_ENV"
+          echo "ADDITIONS=${ADDITIONS}" >> "$GITHUB_ENV"
+          echo "DELETIONS=${DELETIONS}" >> "$GITHUB_ENV"
+          echo "CHANGED_FILES=${CHANGED_FILES}" >> "$GITHUB_ENV"
+
+      - name: Discord PR 생성 알림
+        if: success() && env.PR_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          AUTHOR="${{ github.actor }}"
+          AVATAR="https://github.com/${{ github.actor }}.png"
+          REPO="${{ github.repository }}"
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          DIFF_STAT="+${ADDITIONS} / -${DELETIONS}"
+
+          curl -s -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"author\": {
+                  \"name\": \"${AUTHOR}\",
+                  \"url\": \"https://github.com/${AUTHOR}\",
+                  \"icon_url\": \"${AVATAR}\"
+                },
+                \"title\": \"#${PR_NUMBER}  ${PR_TITLE}\",
+                \"url\": \"${PR_URL}\",
+                \"description\": \"**Pull Request 자동 생성**\",
+                \"color\": 5763719,
+                \"fields\": [
+                  {
+                    \"name\": \"Branch\",
+                    \"value\": \"\`${BRANCH}\` → \`${DEFAULT_BRANCH}\`\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Diff\",
+                    \"value\": \"\`${DIFF_STAT}\` (${CHANGED_FILES} files)\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Commits\",
+                    \"value\": \"${COMMIT_COUNT}개\",
+                    \"inline\": true
+                  }
+                ],
+                \"footer\": {
+                  \"text\": \"Nexus Frontend\",
+                  \"icon_url\": \"https://github.githubassets.com/favicons/favicon-dark.svg\"
+                },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" \
+            "$DISCORD_WEBHOOK_URL"
