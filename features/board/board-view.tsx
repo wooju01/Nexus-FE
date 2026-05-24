@@ -593,7 +593,10 @@ function CreateTaskModal({
     e.preventDefault();
     if (!title.trim()) return;
     const token = getAccessToken();
-    if (!token) return;
+    if (!token) {
+      setError("로그인이 필요합니다. 페이지를 새로고침해 주세요.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
