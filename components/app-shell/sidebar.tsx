@@ -249,14 +249,18 @@ export function Sidebar() {
         </ul>
 
         {/* ── 즐겨찾기 ── */}
-        {starred.length > 0 && (
-          <section className="mb-4">
-            <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
-              <StarIcon className="size-3 fill-yellow-400 text-yellow-400" />
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
-                Starred
-              </h3>
-            </header>
+        <section className="mb-4">
+          <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
+            <StarIcon className="size-3 fill-yellow-400 text-yellow-400" />
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
+              Starred
+            </h3>
+          </header>
+          {starred.length === 0 ? (
+            <p className="px-2 py-1.5 text-xs text-fg-tertiary">
+              채널·DM·프로젝트에 마우스를 올려 ★을 눌러보세요
+            </p>
+          ) : (
             <ul className="space-y-0.5">
               {starred.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -283,18 +287,22 @@ export function Sidebar() {
                 );
               })}
             </ul>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* ── 최근 방문 ── */}
-        {recent.length > 0 && (
-          <section className="mb-4">
-            <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
-              <ClockIcon className="size-3 text-fg-tertiary" />
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
-                Recent
-              </h3>
-            </header>
+        <section className="mb-4">
+          <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
+            <ClockIcon className="size-3 text-fg-tertiary" />
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
+              Recent
+            </h3>
+          </header>
+          {recent.length === 0 ? (
+            <p className="px-2 py-1.5 text-xs text-fg-tertiary">
+              최근 방문한 항목이 없습니다
+            </p>
+          ) : (
             <ul className="space-y-0.5">
               {recent.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -313,15 +321,14 @@ export function Sidebar() {
                     >
                       <ItemIcon type={item.type} name={item.name} dmUser={dmUser} />
                       <span className="flex-1 truncate">{item.name}</span>
-                      {/* 최근 방문 항목도 별 버튼으로 즐겨찾기 가능 */}
                       <StarButton item={{ id: item.id, type: item.type, name: item.name, href: item.href }} />
                     </Link>
                   </li>
                 );
               })}
             </ul>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* ── Channels ── */}
         <SidebarSection title="Channels" actionLabel="채널 추가">
