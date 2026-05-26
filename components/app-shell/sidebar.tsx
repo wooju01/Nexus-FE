@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
+  BoardIcon,
   CalendarIcon,
   CheckCircleIcon,
+  ClockIcon,
   HashIcon,
   HomeIcon,
   InboxIcon,
   LayersIcon,
   PeopleIcon,
   PlusIcon,
+  StarIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { getAccessToken } from "@/lib/auth/tokens";
@@ -28,7 +31,10 @@ import { InviteModal } from "@/features/invitation/invite-modal";
 import { DmStartModal } from "@/features/dm/dm-start-modal";
 import { CreateProjectModal } from "@/features/project/create-project-modal";
 import { cn } from "@/lib/utils/cn";
-import { BoardIcon } from "@/components/icons";
+import {
+  getStarred, toggleStarred, isStarred, type StarredItem,
+} from "@/lib/store/starred";
+import { getRecent, recordVisit, type RecentItem } from "@/lib/store/recent";
 
 import { UnreadBadge } from "./sidebar-badges";
 import { SidebarLink, SidebarSection } from "./sidebar-nav";
@@ -40,18 +46,93 @@ const STATUS_PRESENCE = {
   OFFLINE: "offline",
 } as const;
 
+/** 항목 타입에 맞는 아이콘 */
+function ItemIcon({ type, name, dmUser }: {
+  type: StarredItem["type"] | RecentItem["type"];
+  name: string;
+  dmUser?: { name: string; status: string };
+}) {
+  if (type === "channel") return <HashIcon className="size-4 shrink-0 text-fg-tertiary" />;
+  if (type === "project") return <BoardIcon className="size-4 shrink-0 text-fg-tertiary" />;
+  if (type === "dm" && dmUser) {
+    return (
+      <Avatar
+        initials={dmUser.name[0]?.toUpperCase() ?? "?"}
+        color="blue"
+        presence={STATUS_PRESENCE[dmUser.status as keyof typeof STATUS_PRESENCE]}
+        size="xs"
+        name={dmUser.name}
+      />
+    );
+  }
+  return <HashIcon className="size-4 shrink-0 text-fg-tertiary" />;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { currentWorkspace } = useWorkspace();
+  const wsId = currentWorkspace?.id ?? "";
+
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isDmModalOpen, setIsDmModalOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dms, setDms] = useState<DmChannel[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  // 즐겨찾기 & 최근 방문 상태
+  const [starred, setStarred] = useState<StarredItem[]>([]);
+  const [recent, setRecent] = useState<RecentItem[]>([]);
+
+  // 호버 중인 항목 id (별 버튼 표시용)
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // 이름 조회용 맵
+  const dmUserMap = useRef<Record<string, { name: string; status: string }>>({});
+
+  // 워크스페이스 변경 시 starred/recent 로드
+  useEffect(() => {
+    if (!wsId) return;
+    setStarred(getStarred(wsId));
+    setRecent(getRecent(wsId));
+  }, [wsId]);
+
+  // pathname 변경 시 최근 방문 기록
+  useEffect(() => {
+    if (!wsId) return;
+
+    let type: RecentItem["type"] | null = null;
+    let id = "";
+    let name = "";
+    let href = pathname;
+
+    const channelMatch = pathname.match(/^\/channels\/([^/]+)/);
+    const projectMatch = pathname.match(/^\/projects\/([^/]+)/);
+
+    if (channelMatch) {
+      id = channelMatch[1];
+      // DM인지 채널인지 판별
+      const dmInfo = dmUserMap.current[id];
+      if (dmInfo) {
+        type = "dm";
+        name = dmInfo.name;
+      } else {
+        type = "channel";
+        name = channels.find((c) => c.id === id)?.name ?? "";
+      }
+    } else if (projectMatch) {
+      id = projectMatch[1];
+      type = "project";
+      name = projects.find((p) => p.id === id)?.name ?? "";
+    }
+
+    if (type && id && name) {
+      setRecent(recordVisit(wsId, { id, type, name, href }));
+    }
+  }, [pathname, wsId, channels, projects]);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -64,17 +145,18 @@ export function Sidebar() {
     const token = getAccessToken();
     if (!token) return;
 
-    getChannelsApi(token, currentWorkspace.id)
-      .then(setChannels)
-      .catch(console.error);
-
+    getChannelsApi(token, currentWorkspace.id).then(setChannels).catch(console.error);
     getDmsApi(token, currentWorkspace.id)
-      .then(setDms)
+      .then((list) => {
+        // DM 사용자 맵 갱신
+        list.forEach((dm) => {
+          const other = dm.members[0]?.user;
+          if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
+        });
+        setDms(list);
+      })
       .catch(console.error);
-
-    getProjectsApi(token, currentWorkspace.id)
-      .then(setProjects)
-      .catch(console.error);
+    getProjectsApi(token, currentWorkspace.id).then(setProjects).catch(console.error);
   }, [currentWorkspace]);
 
   // 초기 unread 카운트 fetch + WebSocket 구독
@@ -83,7 +165,6 @@ export function Sidebar() {
     const token = getAccessToken();
     if (!token) return;
 
-    // 초기 안 읽음 요약 fetch
     getUnreadSummaryApi(token, currentWorkspace.id)
       .then((items) => {
         const counts: Record<string, number> = {};
@@ -92,11 +173,8 @@ export function Sidebar() {
       })
       .catch(() => {});
 
-    // WebSocket 연결 + message.created 수신
     const socket = getSocket(token);
-
-    function onMessageCreated(msg: { channelId: string; authorId?: string }) {
-      // 현재 보고 있는 채널이면 카운트 올리지 않음
+    function onMessageCreated(msg: { channelId: string }) {
       const currentChannelId = window.location.pathname.split("/channels/")[1];
       if (msg.channelId === currentChannelId) return;
       setUnreadCounts((prev) => ({
@@ -104,7 +182,6 @@ export function Sidebar() {
         [msg.channelId]: (prev[msg.channelId] ?? 0) + 1,
       }));
     }
-
     socket.on("message.created", onMessageCreated);
     return () => { socket.off("message.created", onMessageCreated); };
   }, [currentWorkspace]);
@@ -114,6 +191,30 @@ export function Sidebar() {
     const token = getAccessToken();
     if (!token) return;
     getDmsApi(token, currentWorkspace.id).then(setDms).catch(console.error);
+  }
+
+  function handleToggleStar(item: StarredItem) {
+    setStarred(toggleStarred(wsId, item));
+  }
+
+  /** 채널/DM/프로젝트 항목에 공통으로 붙는 별 버튼 */
+  function StarButton({ item }: { item: StarredItem }) {
+    const starred_ = isStarred(wsId, item.id);
+    return (
+      <button
+        type="button"
+        aria-label={starred_ ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleStar(item); }}
+        className={cn(
+          "ml-auto flex size-5 shrink-0 items-center justify-center rounded transition-colors",
+          starred_
+            ? "text-yellow-400 opacity-100"
+            : "text-fg-tertiary opacity-0 group-hover:opacity-100 hover:text-yellow-400",
+        )}
+      >
+        <StarIcon className={cn("size-3.5", starred_ && "fill-yellow-400")} />
+      </button>
+    );
   }
 
   return (
@@ -138,48 +239,105 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
+        {/* 개인 네비게이션 */}
         <ul className="mb-4 space-y-0.5">
-          <SidebarLink
-            href="/dashboard"
-            label="Home"
-            icon={<HomeIcon className="size-4" />}
-            isActive={pathname === "/dashboard"}
-          />
-          <SidebarLink
-            label="Inbox"
-            icon={<InboxIcon className="size-4" />}
-            disabled
-          />
-          <SidebarLink
-            label="My tasks"
-            icon={<CheckCircleIcon className="size-4" />}
-            disabled
-          />
-          <SidebarLink
-            href="/calendar"
-            label="Calendar"
-            icon={<CalendarIcon className="size-4" />}
-            isActive={pathname.startsWith("/calendar")}
-          />
-          <SidebarLink
-            label="My week"
-            icon={<LayersIcon className="size-4" />}
-            disabled
-          />
+          <SidebarLink href="/dashboard" label="Home" icon={<HomeIcon className="size-4" />} isActive={pathname === "/dashboard"} />
+          <SidebarLink label="Inbox" icon={<InboxIcon className="size-4" />} disabled />
+          <SidebarLink label="My tasks" icon={<CheckCircleIcon className="size-4" />} disabled />
+          <SidebarLink href="/calendar" label="Calendar" icon={<CalendarIcon className="size-4" />} isActive={pathname.startsWith("/calendar")} />
+          <SidebarLink label="My week" icon={<LayersIcon className="size-4" />} disabled />
         </ul>
 
-        {/* Channels */}
+        {/* ── 즐겨찾기 ── */}
+        {starred.length > 0 && (
+          <section className="mb-4">
+            <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
+              <StarIcon className="size-3 fill-yellow-400 text-yellow-400" />
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
+                Starred
+              </h3>
+            </header>
+            <ul className="space-y-0.5">
+              {starred.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                const dmUser = item.type === "dm" ? dmUserMap.current[item.id] : undefined;
+                return (
+                  <li key={item.id}>
+                    <Link
+                      href={item.href}
+                      aria-current={isActive ? "page" : undefined}
+                      onMouseEnter={() => setHoveredId(item.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      className={cn(
+                        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                        isActive
+                          ? "bg-surface-overlay text-fg-primary"
+                          : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
+                      )}
+                    >
+                      <ItemIcon type={item.type} name={item.name} dmUser={dmUser} />
+                      <span className="flex-1 truncate">{item.name}</span>
+                      <StarButton item={item} />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        {/* ── 최근 방문 ── */}
+        {recent.length > 0 && (
+          <section className="mb-4">
+            <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
+              <ClockIcon className="size-3 text-fg-tertiary" />
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
+                Recent
+              </h3>
+            </header>
+            <ul className="space-y-0.5">
+              {recent.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                const dmUser = item.type === "dm" ? dmUserMap.current[item.id] : undefined;
+                return (
+                  <li key={item.id}>
+                    <Link
+                      href={item.href}
+                      aria-current={isActive ? "page" : undefined}
+                      className={cn(
+                        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                        isActive
+                          ? "bg-surface-overlay text-fg-primary"
+                          : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
+                      )}
+                    >
+                      <ItemIcon type={item.type} name={item.name} dmUser={dmUser} />
+                      <span className="flex-1 truncate">{item.name}</span>
+                      {/* 최근 방문 항목도 별 버튼으로 즐겨찾기 가능 */}
+                      <StarButton item={{ id: item.id, type: item.type, name: item.name, href: item.href }} />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        {/* ── Channels ── */}
         <SidebarSection title="Channels" actionLabel="채널 추가">
           <ul className="space-y-0.5">
             {channels.map((c) => {
               const href = `/channels/${c.id}`;
               const isActive = pathname === href;
               const unread = unreadCounts[c.id] ?? 0;
+              const starItem: StarredItem = { id: c.id, type: "channel", name: c.name ?? c.id, href };
               return (
                 <li key={c.id}>
                   <Link
                     href={href}
                     aria-current={isActive ? "page" : undefined}
+                    onMouseEnter={() => setHoveredId(c.id)}
+                    onMouseLeave={() => setHoveredId(null)}
                     onClick={() => {
                       if (unread > 0) {
                         setUnreadCounts((prev) => ({ ...prev, [c.id]: 0 }));
@@ -188,7 +346,7 @@ export function Sidebar() {
                       }
                     }}
                     className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                      "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                       isActive
                         ? "bg-surface-overlay text-fg-primary"
                         : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
@@ -196,7 +354,8 @@ export function Sidebar() {
                   >
                     <HashIcon className="size-4 shrink-0 text-fg-tertiary" />
                     <span className="flex-1 truncate text-left">{c.name}</span>
-                    {unread > 0 ? <UnreadBadge count={unread} /> : null}
+                    {unread > 0 && hoveredId !== c.id ? <UnreadBadge count={unread} /> : null}
+                    {hoveredId === c.id || isStarred(wsId, c.id) ? <StarButton item={starItem} /> : null}
                   </Link>
                 </li>
               );
@@ -204,23 +363,22 @@ export function Sidebar() {
           </ul>
         </SidebarSection>
 
-        {/* Projects */}
-        <SidebarSection
-          title="Projects"
-          actionLabel="프로젝트 추가"
-          onAction={() => setIsProjectModalOpen(true)}
-        >
+        {/* ── Projects ── */}
+        <SidebarSection title="Projects" actionLabel="프로젝트 추가" onAction={() => setIsProjectModalOpen(true)}>
           <ul className="space-y-0.5">
             {projects.map((p) => {
               const href = `/projects/${p.id}`;
               const isActive = pathname.startsWith(href);
+              const starItem: StarredItem = { id: p.id, type: "project", name: p.name, href };
               return (
                 <li key={p.id}>
                   <Link
                     href={href}
                     aria-current={isActive ? "page" : undefined}
+                    onMouseEnter={() => setHoveredId(p.id)}
+                    onMouseLeave={() => setHoveredId(null)}
                     className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                      "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                       isActive
                         ? "bg-surface-overlay text-fg-primary"
                         : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
@@ -228,6 +386,7 @@ export function Sidebar() {
                   >
                     <BoardIcon className="size-4 shrink-0 text-fg-tertiary" />
                     <span className="flex-1 truncate">{p.name}</span>
+                    {hoveredId === p.id || isStarred(wsId, p.id) ? <StarButton item={starItem} /> : null}
                   </Link>
                 </li>
               );
@@ -235,12 +394,8 @@ export function Sidebar() {
           </ul>
         </SidebarSection>
 
-        {/* DMs */}
-        <SidebarSection
-          title="Direct Messages"
-          actionLabel="DM 시작"
-          onAction={() => setIsDmModalOpen(true)}
-        >
+        {/* ── Direct Messages ── */}
+        <SidebarSection title="Direct Messages" actionLabel="DM 시작" onAction={() => setIsDmModalOpen(true)}>
           <ul className="space-y-0.5">
             {dms.map((dm) => {
               const other = dm.members[0]?.user;
@@ -248,11 +403,14 @@ export function Sidebar() {
               const href = `/channels/${dm.id}`;
               const isActive = pathname === href;
               const unread = unreadCounts[dm.id] ?? 0;
+              const starItem: StarredItem = { id: dm.id, type: "dm", name: other.name, href };
               return (
                 <li key={dm.id}>
                   <Link
                     href={href}
                     aria-current={isActive ? "page" : undefined}
+                    onMouseEnter={() => setHoveredId(dm.id)}
+                    onMouseLeave={() => setHoveredId(null)}
                     onClick={() => {
                       if (unread > 0) {
                         setUnreadCounts((prev) => ({ ...prev, [dm.id]: 0 }));
@@ -261,7 +419,7 @@ export function Sidebar() {
                       }
                     }}
                     className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                      "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                       isActive
                         ? "bg-surface-overlay text-fg-primary"
                         : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
@@ -275,7 +433,8 @@ export function Sidebar() {
                       name={other.name}
                     />
                     <span className="flex-1 truncate text-left">{other.name}</span>
-                    {unread > 0 ? <UnreadBadge count={unread} /> : null}
+                    {unread > 0 && hoveredId !== dm.id ? <UnreadBadge count={unread} /> : null}
+                    {hoveredId === dm.id || isStarred(wsId, dm.id) ? <StarButton item={starItem} /> : null}
                   </Link>
                 </li>
               );
@@ -284,7 +443,7 @@ export function Sidebar() {
         </SidebarSection>
       </nav>
 
-      {/* Invite teammates */}
+      {/* 하단 - Invite */}
       <div className="border-t border-border-subtle p-3">
         <button
           type="button"
@@ -298,24 +457,9 @@ export function Sidebar() {
 
       {currentWorkspace ? (
         <>
-          <InviteModal
-            isOpen={isInviteModalOpen}
-            onClose={() => setIsInviteModalOpen(false)}
-            workspaceId={currentWorkspace.id}
-          />
-          <DmStartModal
-            isOpen={isDmModalOpen}
-            onClose={() => setIsDmModalOpen(false)}
-            workspaceId={currentWorkspace.id}
-            currentUserId={currentUserId}
-            onDmCreated={refreshDms}
-          />
-          <CreateProjectModal
-            isOpen={isProjectModalOpen}
-            onClose={() => setIsProjectModalOpen(false)}
-            workspaceId={currentWorkspace.id}
-            onCreated={(project) => setProjects((prev) => [...prev, project])}
-          />
+          <InviteModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} workspaceId={currentWorkspace.id} />
+          <DmStartModal isOpen={isDmModalOpen} onClose={() => setIsDmModalOpen(false)} workspaceId={currentWorkspace.id} currentUserId={currentUserId} onDmCreated={refreshDms} />
+          <CreateProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} workspaceId={currentWorkspace.id} onCreated={(project) => setProjects((prev) => [...prev, project])} />
         </>
       ) : null}
     </aside>
