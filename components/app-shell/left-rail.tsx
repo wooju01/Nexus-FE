@@ -8,6 +8,7 @@ import {
   BoardIcon,
   DocsIcon,
   HomeIcon,
+  InboxIcon,
   MessagesIcon,
   PeopleIcon,
 } from "@/components/icons";
@@ -28,20 +29,20 @@ const RAIL_ITEMS: ReadonlyArray<RailItem> = [
     icon: HomeIcon,
     activePrefix: "/dashboard",
   },
-  {
-    label: "Messages",
-    href: "/channels",
-    icon: MessagesIcon,
-    activePrefix: "/channels",
-  },
+  { label: "Inbox", icon: InboxIcon },
+  { label: "Messages", icon: MessagesIcon },
   {
     label: "Boards",
-    href: "/projects",
     icon: BoardIcon,
     activePrefix: "/projects",
   },
   { label: "Docs", icon: DocsIcon },
-  { label: "People", icon: PeopleIcon },
+  {
+    label: "People",
+    href: "/settings/profile",
+    icon: PeopleIcon,
+    activePrefix: "/settings",
+  },
 ];
 
 /**
