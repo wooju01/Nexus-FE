@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { getWorkspacesApi } from "@/lib/api/workspace";
 import { getAccessToken } from "@/lib/auth/tokens";
 
@@ -13,12 +13,16 @@ type Workspace = {
 
 type WorkspaceContextValue = {
   currentWorkspace: Workspace | null;
+  workspaces: Workspace[];
   isLoading: boolean;
+  switchWorkspace: (workspace: Workspace) => void;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue>({
   currentWorkspace: null,
+  workspaces: [],
   isLoading: true,
+  switchWorkspace: () => {},
 });
 
 export function useWorkspace() {
@@ -26,6 +30,7 @@ export function useWorkspace() {
 }
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,13 +41,23 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     getWorkspacesApi(token)
-      .then((workspaces) => setCurrentWorkspace(workspaces[0] ?? null))
-      .catch(() => setCurrentWorkspace(null))
+      .then((list) => {
+        setWorkspaces(list);
+        setCurrentWorkspace(list[0] ?? null);
+      })
+      .catch(() => {
+        setWorkspaces([]);
+        setCurrentWorkspace(null);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
+  const switchWorkspace = useCallback((workspace: Workspace) => {
+    setCurrentWorkspace(workspace);
+  }, []);
+
   return (
-    <WorkspaceContext.Provider value={{ currentWorkspace, isLoading }}>
+    <WorkspaceContext.Provider value={{ currentWorkspace, workspaces, isLoading, switchWorkspace }}>
       {children}
     </WorkspaceContext.Provider>
   );
