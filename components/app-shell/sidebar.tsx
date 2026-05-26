@@ -260,7 +260,7 @@ export function Sidebar() {
             onClick={() => setStarredOpen((o) => !o)}
             className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 pt-2 hover:bg-surface-elevated"
           >
-            <StarIcon className="size-3 fill-yellow-400 text-yellow-400" />
+            <StarIcon className="size-3 text-fg-tertiary" />
             <span className="flex-1 text-left text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
               Starred
             </span>
