@@ -96,16 +96,9 @@ export async function updateProjectMemberApi(
   targetUserId: string,
   role: ProjectRole,
 ): Promise<ProjectMember> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${API_URL}/projects/${projectId}/members/${targetUserId}`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ role }),
-    },
+    { method: "PATCH", json: true, body: JSON.stringify({ role }) },
   );
   return handleResponse<ProjectMember>(res);
 }
