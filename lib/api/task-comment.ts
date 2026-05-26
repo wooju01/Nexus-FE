@@ -12,6 +12,7 @@
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) {
@@ -46,9 +47,7 @@ export async function getCommentsApi(
   accessToken: string,
   taskId: string,
 ): Promise<TaskComment[]> {
-  const res = await fetch(`${API_URL}/tasks/${taskId}/comments`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/tasks/${taskId}/comments`);
   return handleResponse<TaskComment[]>(res);
 }
 
@@ -58,14 +57,7 @@ export async function createCommentApi(
   taskId: string,
   content: unknown,
 ): Promise<TaskComment> {
-  const res = await fetch(`${API_URL}/tasks/${taskId}/comments`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ content }),
-  });
+  const res = await fetchWithAuth(`${API_URL}/tasks/${taskId}/comments`, { method: "POST", json: true, body: JSON.stringify({ content }) });
   return handleResponse<TaskComment>(res);
 }
 
@@ -75,14 +67,7 @@ export async function updateCommentApi(
   commentId: string,
   content: unknown,
 ): Promise<TaskComment> {
-  const res = await fetch(`${API_URL}/comments/${commentId}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ content }),
-  });
+  const res = await fetchWithAuth(`${API_URL}/comments/${commentId}`, { method: "PATCH", json: true, body: JSON.stringify({ content }) });
   return handleResponse<TaskComment>(res);
 }
 
@@ -91,10 +76,7 @@ export async function deleteCommentApi(
   accessToken: string,
   commentId: string,
 ): Promise<void> {
-  const res = await fetch(`${API_URL}/comments/${commentId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/comments/${commentId}`, { method: "DELETE" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(

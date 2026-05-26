@@ -17,6 +17,7 @@
 import type { Invitation, WorkspaceRole } from "@/types/invitation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 // NestJS 글로벌 ExceptionFilter 가 반환하는 형태와 호환.
 type ApiError = {
@@ -34,12 +35,6 @@ async function handleResponse<T>(res: Response): Promise<T> {
   throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
 }
 
-function authHeaders(accessToken: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${accessToken}`,
-  };
-}
-
 export type CreateInvitationInput = {
   workspaceId: string;
   email: string;
@@ -51,16 +46,9 @@ export async function createInvitation(
   accessToken: string,
   input: CreateInvitationInput,
 ): Promise<Invitation> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${API_URL}/workspaces/${input.workspaceId}/invitations`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(accessToken),
-      },
-      body: JSON.stringify({ email: input.email, role: input.role }),
-    },
+    { method: "POST", json: true, body: JSON.stringify({ email: input.email, role: input.role }) },
   );
   return handleResponse<Invitation>(res);
 }
@@ -70,9 +58,7 @@ export async function fetchPendingInvitations(
   accessToken: string,
   workspaceId: string,
 ): Promise<ReadonlyArray<Invitation>> {
-  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/invitations`, {
-    headers: authHeaders(accessToken),
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/invitations`);
   return handleResponse<Invitation[]>(res);
 }
 
@@ -95,10 +81,7 @@ export async function acceptInvitation(
   accessToken: string,
   token: string,
 ): Promise<{ workspaceId: string }> {
-  const res = await fetch(`${API_URL}/invitations/${token}/accept`, {
-    method: "POST",
-    headers: authHeaders(accessToken),
-  });
+  const res = await fetchWithAuth(`${API_URL}/invitations/${token}/accept`, { method: "POST" });
   return handleResponse<{ workspaceId: string }>(res);
 }
 
@@ -107,9 +90,6 @@ export async function cancelInvitation(
   accessToken: string,
   token: string,
 ): Promise<void> {
-  const res = await fetch(`${API_URL}/invitations/${token}`, {
-    method: "DELETE",
-    headers: authHeaders(accessToken),
-  });
+  const res = await fetchWithAuth(`${API_URL}/invitations/${token}`, { method: "DELETE" });
   await handleResponse<void>(res);
 }

@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
@@ -22,9 +23,7 @@ export async function getProjectsApi(
   accessToken: string,
   workspaceId: string,
 ): Promise<Project[]> {
-  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/projects`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/projects`);
   return handleResponse<Project[]>(res);
 }
 
@@ -34,14 +33,7 @@ export async function createProjectApi(
   workspaceId: string,
   data: { name: string; description?: string },
 ): Promise<Project> {
-  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/projects`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/projects`, { method: "POST", json: true, body: JSON.stringify(data) });
   return handleResponse<Project>(res);
 }
 
@@ -50,9 +42,7 @@ export async function getProjectApi(
   accessToken: string,
   projectId: string,
 ): Promise<Project> {
-  const res = await fetch(`${API_URL}/projects/${projectId}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}`);
   return handleResponse<Project>(res);
 }
 
@@ -62,14 +52,7 @@ export async function updateProjectApi(
   projectId: string,
   data: { name?: string; description?: string },
 ): Promise<Project> {
-  const res = await fetch(`${API_URL}/projects/${projectId}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}`, { method: "PATCH", json: true, body: JSON.stringify(data) });
   return handleResponse<Project>(res);
 }
 
@@ -92,9 +75,7 @@ export async function getProjectMembersApi(
   accessToken: string,
   projectId: string,
 ): Promise<ProjectMember[]> {
-  const res = await fetch(`${API_URL}/projects/${projectId}/members`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}/members`);
   return handleResponse<ProjectMember[]>(res);
 }
 
@@ -104,14 +85,7 @@ export async function addProjectMemberApi(
   projectId: string,
   data: { userId: string; role?: ProjectRole },
 ): Promise<ProjectMember> {
-  const res = await fetch(`${API_URL}/projects/${projectId}/members`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}/members`, { method: "POST", json: true, body: JSON.stringify(data) });
   return handleResponse<ProjectMember>(res);
 }
 
@@ -142,13 +116,7 @@ export async function removeProjectMemberApi(
   projectId: string,
   targetUserId: string,
 ): Promise<void> {
-  const res = await fetch(
-    `${API_URL}/projects/${projectId}/members/${targetUserId}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}/members/${targetUserId}`, { method: "DELETE" });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.message ?? "멤버 제거 실패");
@@ -160,10 +128,7 @@ export async function deleteProjectApi(
   accessToken: string,
   projectId: string,
 ): Promise<void> {
-  const res = await fetch(`${API_URL}/projects/${projectId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}`, { method: "DELETE" });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.message ?? "삭제 실패");
