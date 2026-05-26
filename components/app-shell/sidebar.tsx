@@ -8,6 +8,7 @@ import {
   BoardIcon,
   CalendarIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
   ClockIcon,
   HashIcon,
   HomeIcon,
@@ -89,6 +90,10 @@ export function Sidebar() {
 
   // 호버 중인 항목 id (별 버튼 표시용)
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // 드롭다운 열림 상태
+  const [starredOpen, setStarredOpen] = useState(true);
+  const [recentOpen, setRecentOpen] = useState(true);
 
   // 이름 조회용 맵
   const dmUserMap = useRef<Record<string, { name: string; status: string }>>({});
@@ -250,83 +255,97 @@ export function Sidebar() {
 
         {/* ── 즐겨찾기 ── */}
         <section className="mb-4">
-          <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
+          <button
+            type="button"
+            onClick={() => setStarredOpen((o) => !o)}
+            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 pt-2 hover:bg-surface-elevated"
+          >
             <StarIcon className="size-3 fill-yellow-400 text-yellow-400" />
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
+            <span className="flex-1 text-left text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
               Starred
-            </h3>
-          </header>
-          {starred.length === 0 ? (
-            <p className="px-2 py-1.5 text-xs text-fg-tertiary">
-              채널·DM·프로젝트에 마우스를 올려 ★을 눌러보세요
-            </p>
-          ) : (
-            <ul className="space-y-0.5">
-              {starred.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                const dmUser = item.type === "dm" ? dmUserMap.current[item.id] : undefined;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={item.href}
-                      aria-current={isActive ? "page" : undefined}
-                      onMouseEnter={() => setHoveredId(item.id)}
-                      onMouseLeave={() => setHoveredId(null)}
-                      className={cn(
-                        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
-                        isActive
-                          ? "bg-surface-overlay text-fg-primary"
-                          : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
-                      )}
-                    >
-                      <ItemIcon type={item.type} name={item.name} dmUser={dmUser} />
-                      <span className="flex-1 truncate">{item.name}</span>
-                      <StarButton item={item} />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            </span>
+            <ChevronDownIcon className={cn("size-3 text-fg-tertiary transition-transform", !starredOpen && "-rotate-90")} />
+          </button>
+          {starredOpen && (
+            starred.length === 0 ? (
+              <p className="px-2 py-1.5 text-xs text-fg-tertiary">
+                채널·DM·프로젝트에 마우스를 올려 ★을 눌러보세요
+              </p>
+            ) : (
+              <ul className="mt-0.5 space-y-0.5">
+                {starred.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  const dmUser = item.type === "dm" ? dmUserMap.current[item.id] : undefined;
+                  return (
+                    <li key={item.id}>
+                      <Link
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        onMouseEnter={() => setHoveredId(item.id)}
+                        onMouseLeave={() => setHoveredId(null)}
+                        className={cn(
+                          "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                          isActive
+                            ? "bg-surface-overlay text-fg-primary"
+                            : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
+                        )}
+                      >
+                        <ItemIcon type={item.type} name={item.name} dmUser={dmUser} />
+                        <span className="flex-1 truncate">{item.name}</span>
+                        <StarButton item={item} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
           )}
         </section>
 
         {/* ── 최근 방문 ── */}
         <section className="mb-4">
-          <header className="flex items-center gap-1.5 px-2 pb-1 pt-2">
+          <button
+            type="button"
+            onClick={() => setRecentOpen((o) => !o)}
+            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 pt-2 hover:bg-surface-elevated"
+          >
             <ClockIcon className="size-3 text-fg-tertiary" />
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
+            <span className="flex-1 text-left text-[11px] font-semibold uppercase tracking-wide text-fg-tertiary">
               Recent
-            </h3>
-          </header>
-          {recent.length === 0 ? (
-            <p className="px-2 py-1.5 text-xs text-fg-tertiary">
-              최근 방문한 항목이 없습니다
-            </p>
-          ) : (
-            <ul className="space-y-0.5">
-              {recent.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                const dmUser = item.type === "dm" ? dmUserMap.current[item.id] : undefined;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={item.href}
-                      aria-current={isActive ? "page" : undefined}
-                      className={cn(
-                        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
-                        isActive
-                          ? "bg-surface-overlay text-fg-primary"
-                          : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
-                      )}
-                    >
-                      <ItemIcon type={item.type} name={item.name} dmUser={dmUser} />
-                      <span className="flex-1 truncate">{item.name}</span>
-                      <StarButton item={{ id: item.id, type: item.type, name: item.name, href: item.href }} />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            </span>
+            <ChevronDownIcon className={cn("size-3 text-fg-tertiary transition-transform", !recentOpen && "-rotate-90")} />
+          </button>
+          {recentOpen && (
+            recent.length === 0 ? (
+              <p className="px-2 py-1.5 text-xs text-fg-tertiary">
+                최근 방문한 항목이 없습니다
+              </p>
+            ) : (
+              <ul className="mt-0.5 space-y-0.5">
+                {recent.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  const dmUser = item.type === "dm" ? dmUserMap.current[item.id] : undefined;
+                  return (
+                    <li key={item.id}>
+                      <Link
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        className={cn(
+                          "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                          isActive
+                            ? "bg-surface-overlay text-fg-primary"
+                            : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
+                        )}
+                      >
+                        <ItemIcon type={item.type} name={item.name} dmUser={dmUser} />
+                        <span className="flex-1 truncate">{item.name}</span>
+                        <StarButton item={{ id: item.id, type: item.type, name: item.name, href: item.href }} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
           )}
         </section>
 
