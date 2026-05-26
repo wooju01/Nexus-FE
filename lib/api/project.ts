@@ -115,6 +115,27 @@ export async function addProjectMemberApi(
   return handleResponse<ProjectMember>(res);
 }
 
+// PATCH /projects/:id/members/:targetUserId — 역할 변경
+export async function updateProjectMemberApi(
+  accessToken: string,
+  projectId: string,
+  targetUserId: string,
+  role: ProjectRole,
+): Promise<ProjectMember> {
+  const res = await fetch(
+    `${API_URL}/projects/${projectId}/members/${targetUserId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ role }),
+    },
+  );
+  return handleResponse<ProjectMember>(res);
+}
+
 // DELETE /projects/:id/members/:targetUserId
 export async function removeProjectMemberApi(
   accessToken: string,

@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils/cn";
 import { getAccessToken } from "@/lib/auth/tokens";
+import { useUser } from "@/features/auth/user-provider";
 import {
   getProjectMembersApi,
   addProjectMemberApi,
   removeProjectMemberApi,
+  updateProjectMemberApi,
   type ProjectMember,
 } from "@/lib/api/project";
 import { getMembersApi, type WorkspaceMember } from "@/lib/api/member";
@@ -54,13 +56,19 @@ function Avatar({ name, avatar }: { name: string; avatar: string | null }) {
 
 export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { user: currentUser } = useUser();
 
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [wsMembers, setWsMembers] = useState<WorkspaceMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 현재 유저의 프로젝트 역할 (목록에 없으면 null — WS OWNER/ADMIN은 별도 권한)
+  const myRole = members.find((m) => m.user.id === currentUser?.id)?.role ?? null;
+  const canManage = myRole === "MANAGER";
 
   // 패널 외부 클릭 시 닫기
   useEffect(() => {
@@ -141,6 +149,21 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
     }
   }
 
+  async function handleRoleChange(targetUserId: string, newRole: "MANAGER" | "MEMBER") {
+    const token = getAccessToken();
+    if (!token) return;
+    setUpdatingId(targetUserId);
+    setError(null);
+    try {
+      const updated = await updateProjectMemberApi(token, projectId, targetUserId, newRole);
+      setMembers((prev) => prev.map((m) => (m.user.id === targetUserId ? updated : m)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "역할 변경에 실패했습니다.");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   return (
     <div
       ref={panelRef}
@@ -180,7 +203,7 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
               {members.map((m) => (
                 <li
                   key={m.id}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-overlay"
+                  className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-overlay"
                 >
                   <Avatar name={m.user.name} avatar={m.user.avatar} />
                   <div className="flex min-w-0 flex-1 flex-col">
@@ -191,16 +214,49 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
                       {m.user.email}
                     </span>
                   </div>
-                  <RoleBadge role={m.role} />
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(m.user.id)}
-                    disabled={removingId === m.user.id}
-                    aria-label={`${m.user.name} 제거`}
-                    className="ml-1 rounded p-0.5 text-fg-tertiary opacity-0 hover:text-red-400 group-hover:opacity-100 [li:hover_&]:opacity-100"
-                  >
-                    {removingId === m.user.id ? "..." : "✕"}
-                  </button>
+
+                  {/* 역할 표시 / Manager일 때만 변경 가능 */}
+                  {canManage && m.user.id !== currentUser?.id ? (
+                    <button
+                      type="button"
+                      disabled={updatingId === m.user.id}
+                      onClick={() =>
+                        handleRoleChange(
+                          m.user.id,
+                          m.role === "MANAGER" ? "MEMBER" : "MANAGER",
+                        )
+                      }
+                      title={m.role === "MANAGER" ? "Member로 변경" : "Manager로 승격"}
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold transition-opacity",
+                        m.role === "MANAGER"
+                          ? "bg-accent/15 text-accent hover:bg-accent/30"
+                          : "bg-surface-overlay text-fg-tertiary hover:bg-surface-overlay/80 hover:text-fg-secondary",
+                        updatingId === m.user.id && "opacity-50",
+                      )}
+                    >
+                      {updatingId === m.user.id
+                        ? "..."
+                        : m.role === "MANAGER"
+                          ? "Manager"
+                          : "Member"}
+                    </button>
+                  ) : (
+                    <RoleBadge role={m.role} />
+                  )}
+
+                  {/* 제거 버튼 — Manager만 표시, 자기 자신은 제외 */}
+                  {canManage && m.user.id !== currentUser?.id ? (
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(m.user.id)}
+                      disabled={removingId === m.user.id}
+                      aria-label={`${m.user.name} 제거`}
+                      className="ml-1 rounded p-0.5 text-fg-tertiary opacity-0 hover:text-red-400 group-hover:opacity-100"
+                    >
+                      {removingId === m.user.id ? "..." : "✕"}
+                    </button>
+                  ) : null}
                 </li>
               ))}
               {members.length === 0 ? (
@@ -210,8 +266,8 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
               ) : null}
             </ul>
 
-            {/* 초대 가능한 워크스페이스 멤버 */}
-            {invitableMembers.length > 0 ? (
+            {/* 초대하기 — Manager만 표시 */}
+            {canManage && invitableMembers.length > 0 ? (
               <>
                 <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-fg-tertiary">
                   초대하기
