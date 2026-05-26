@@ -73,6 +73,67 @@ export async function updateProjectApi(
   return handleResponse<Project>(res);
 }
 
+export type ProjectRole = "MANAGER" | "MEMBER";
+
+export type ProjectMember = {
+  id: string;
+  role: ProjectRole;
+  joinedAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatar: string | null;
+  };
+};
+
+// GET /projects/:id/members
+export async function getProjectMembersApi(
+  accessToken: string,
+  projectId: string,
+): Promise<ProjectMember[]> {
+  const res = await fetch(`${API_URL}/projects/${projectId}/members`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return handleResponse<ProjectMember[]>(res);
+}
+
+// POST /projects/:id/members — 워크스페이스 멤버를 프로젝트에 초대
+export async function addProjectMemberApi(
+  accessToken: string,
+  projectId: string,
+  data: { userId: string; role?: ProjectRole },
+): Promise<ProjectMember> {
+  const res = await fetch(`${API_URL}/projects/${projectId}/members`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<ProjectMember>(res);
+}
+
+// DELETE /projects/:id/members/:targetUserId
+export async function removeProjectMemberApi(
+  accessToken: string,
+  projectId: string,
+  targetUserId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_URL}/projects/${projectId}/members/${targetUserId}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message ?? "멤버 제거 실패");
+  }
+}
+
 // DELETE /projects/:id
 export async function deleteProjectApi(
   accessToken: string,

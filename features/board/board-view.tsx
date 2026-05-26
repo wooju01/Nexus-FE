@@ -19,6 +19,7 @@ import { FilterIcon, PlusIcon } from "@/components/icons";
 import { cn } from "@/lib/utils/cn";
 import { getAccessToken } from "@/lib/auth/tokens";
 import type { Project } from "@/lib/api/project";
+import { ProjectMemberPanel } from "./project-member-panel";
 import {
   createTaskApi,
   getTaskApi,
@@ -95,6 +96,7 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
   const [createInitial, setCreateInitial] = useState<TaskStatus | null>(null);
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isMemberPanelOpen, setIsMemberPanelOpen] = useState(false);
 
   // 현재 뷰 (board | table | timeline | calendar)
   const view: ViewKey = parseView(searchParams.get("view"));
@@ -416,6 +418,29 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
               ) : null}
             </button>
             <ViewTabs active={view} boardPath={boardPath} searchParams={searchParams} />
+
+            {/* 프로젝트 멤버 관리 버튼 */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsMemberPanelOpen((v) => !v)}
+                aria-expanded={isMemberPanelOpen}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-elevated px-3 py-1.5 text-xs font-medium text-fg-secondary hover:text-fg-primary",
+                  isMemberPanelOpen && "border-accent/40 text-fg-primary",
+                )}
+              >
+                Members
+              </button>
+              {isMemberPanelOpen ? (
+                <ProjectMemberPanel
+                  projectId={project.id}
+                  workspaceId={project.workspaceId}
+                  onClose={() => setIsMemberPanelOpen(false)}
+                />
+              ) : null}
+            </div>
+
             <button
               type="button"
               onClick={() => setCreateInitial("BACKLOG")}
@@ -593,7 +618,10 @@ function CreateTaskModal({
     e.preventDefault();
     if (!title.trim()) return;
     const token = getAccessToken();
-    if (!token) return;
+    if (!token) {
+      setError("로그인이 필요합니다. 페이지를 새로고침해 주세요.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
