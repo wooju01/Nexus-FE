@@ -247,10 +247,10 @@ export function Sidebar() {
         {/* 개인 네비게이션 */}
         <ul className="mb-4 space-y-0.5">
           <SidebarLink href="/dashboard" label="Home" icon={<HomeIcon className="size-4" />} isActive={pathname === "/dashboard"} />
-          <SidebarLink label="Inbox" icon={<InboxIcon className="size-4" />} disabled />
-          <SidebarLink label="My tasks" icon={<CheckCircleIcon className="size-4" />} disabled />
+          <SidebarLink href="/inbox" label="Inbox" icon={<InboxIcon className="size-4" />} isActive={pathname === "/inbox"} />
+          <SidebarLink href="/my-tasks" label="My tasks" icon={<CheckCircleIcon className="size-4" />} isActive={pathname === "/my-tasks"} />
           <SidebarLink href="/calendar" label="Calendar" icon={<CalendarIcon className="size-4" />} isActive={pathname.startsWith("/calendar")} />
-          <SidebarLink label="My week" icon={<LayersIcon className="size-4" />} disabled />
+          <SidebarLink href="/my-week" label="My week" icon={<LayersIcon className="size-4" />} isActive={pathname === "/my-week"} />
         </ul>
 
         {/* ── 즐겨찾기 ── */}
