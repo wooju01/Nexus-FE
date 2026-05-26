@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
@@ -67,9 +68,7 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 export async function getTasksApi(accessToken: string, projectId: string): Promise<Task[]> {
-  const res = await fetch(`${API_URL}/projects/${projectId}/tasks`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}/tasks`);
   return handleResponse<Task[]>(res);
 }
 
@@ -78,18 +77,12 @@ export async function createTaskApi(
   projectId: string,
   data: CreateTaskPayload,
 ): Promise<Task> {
-  const res = await fetch(`${API_URL}/projects/${projectId}/tasks`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  const res = await fetchWithAuth(`${API_URL}/projects/${projectId}/tasks`, { method: "POST", json: true, body: JSON.stringify(data) });
   return handleResponse<Task>(res);
 }
 
 export async function getTaskApi(accessToken: string, taskId: string): Promise<Task> {
-  const res = await fetch(`${API_URL}/tasks/${taskId}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/tasks/${taskId}`);
   return handleResponse<Task>(res);
 }
 
@@ -98,19 +91,12 @@ export async function updateTaskApi(
   taskId: string,
   data: UpdateTaskPayload,
 ): Promise<Task> {
-  const res = await fetch(`${API_URL}/tasks/${taskId}`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  const res = await fetchWithAuth(`${API_URL}/tasks/${taskId}`, { method: "PATCH", json: true, body: JSON.stringify(data) });
   return handleResponse<Task>(res);
 }
 
 export async function deleteTaskApi(accessToken: string, taskId: string): Promise<void> {
-  const res = await fetch(`${API_URL}/tasks/${taskId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/tasks/${taskId}`, { method: "DELETE" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { message?: string }).message ?? "삭제 실패");
