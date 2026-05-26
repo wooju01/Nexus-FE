@@ -12,6 +12,7 @@
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
@@ -36,8 +37,6 @@ export async function getLabelsApi(
   accessToken: string,
   workspaceId: string,
 ): Promise<WorkspaceLabel[]> {
-  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/labels`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/labels`);
   return handleResponse<WorkspaceLabel[]>(res);
 }

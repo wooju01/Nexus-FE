@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
@@ -34,10 +35,7 @@ export async function getMessagesApi(
 ): Promise<Message[]> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
-  const res = await fetch(
-    `${API_URL}/channels/${channelId}/messages?${params.toString()}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
+  const res = await fetchWithAuth(`${API_URL}/channels/${channelId}/messages?${params.toString()}`);
   return handleResponse<Message[]>(res);
 }
 
@@ -47,14 +45,7 @@ export async function sendMessageApi(
   channelId: string,
   content: unknown,
 ): Promise<Message> {
-  const res = await fetch(`${API_URL}/channels/${channelId}/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ content }),
-  });
+  const res = await fetchWithAuth(`${API_URL}/channels/${channelId}/messages`, { method: "POST", json: true, body: JSON.stringify({ content }) });
   return handleResponse<Message>(res);
 }
 
@@ -64,14 +55,7 @@ export async function updateMessageApi(
   messageId: string,
   content: unknown,
 ): Promise<Message> {
-  const res = await fetch(`${API_URL}/messages/${messageId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ content }),
-  });
+  const res = await fetchWithAuth(`${API_URL}/messages/${messageId}`, { method: "PATCH", json: true, body: JSON.stringify({ content }) });
   return handleResponse<Message>(res);
 }
 
@@ -80,10 +64,7 @@ export async function deleteMessageApi(
   accessToken: string,
   messageId: string,
 ): Promise<void> {
-  await fetch(`${API_URL}/messages/${messageId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  await fetchWithAuth(`${API_URL}/messages/${messageId}`, { method: "DELETE" });
 }
 
 // GET /messages/:messageId/replies
@@ -91,9 +72,7 @@ export async function getRepliesApi(
   accessToken: string,
   messageId: string,
 ): Promise<Message[]> {
-  const res = await fetch(`${API_URL}/messages/${messageId}/replies`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/messages/${messageId}/replies`);
   return handleResponse<Message[]>(res);
 }
 
@@ -103,14 +82,7 @@ export async function addReplyApi(
   messageId: string,
   content: unknown,
 ): Promise<Message> {
-  const res = await fetch(`${API_URL}/messages/${messageId}/replies`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ content }),
-  });
+  const res = await fetchWithAuth(`${API_URL}/messages/${messageId}/replies`, { method: "POST", json: true, body: JSON.stringify({ content }) });
   return handleResponse<Message>(res);
 }
 
@@ -120,14 +92,7 @@ export async function addReactionApi(
   messageId: string,
   emoji: string,
 ): Promise<void> {
-  await fetch(`${API_URL}/messages/${messageId}/reactions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ emoji }),
-  });
+  await fetchWithAuth(`${API_URL}/messages/${messageId}/reactions`, { method: "POST", json: true, body: JSON.stringify({ emoji }) });
 }
 
 // DELETE /messages/:messageId/reactions/:emoji
@@ -136,10 +101,7 @@ export async function removeReactionApi(
   messageId: string,
   emoji: string,
 ): Promise<void> {
-  await fetch(`${API_URL}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  await fetchWithAuth(`${API_URL}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, { method: "DELETE" });
 }
 
 // POST /channels/:channelId/read-markers — 채널 진입 시 현재 시점으로 읽음 처리
@@ -147,14 +109,7 @@ export async function markChannelReadApi(
   accessToken: string,
   channelId: string,
 ): Promise<void> {
-  await fetch(`${API_URL}/channels/${channelId}/read-markers`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({}),
-  });
+  await fetchWithAuth(`${API_URL}/channels/${channelId}/read-markers`, { method: "POST", json: true, body: JSON.stringify({}) });
 }
 
 // POST /channels/:channelId/read-markers
@@ -163,12 +118,5 @@ export async function updateReadMarkerApi(
   channelId: string,
   lastReadMessageId: string,
 ): Promise<void> {
-  await fetch(`${API_URL}/channels/${channelId}/read-markers`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ lastReadMessageId }),
-  });
+  await fetchWithAuth(`${API_URL}/channels/${channelId}/read-markers`, { method: "POST", json: true, body: JSON.stringify({ lastReadMessageId }) });
 }

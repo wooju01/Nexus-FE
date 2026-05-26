@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 type ApiError = {
   message: string;
@@ -23,9 +24,7 @@ type Workspace = {
 
 // GET 내가 속한 워크스페이스 목록
 export async function getWorkspacesApi(accessToken: string): Promise<Workspace[]> {
-  const res = await fetch(`${API_URL}/workspaces`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces`);
   return handleResponse<Workspace[]>(res);
 }
 
@@ -39,9 +38,7 @@ export async function getUnreadSummaryApi(
   accessToken: string,
   workspaceId: string,
 ): Promise<UnreadSummaryItem[]> {
-  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/unread-summary`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/unread-summary`);
   return handleResponse<UnreadSummaryItem[]>(res);
 }
 
@@ -51,13 +48,6 @@ export async function createWorkspaceApi(
   name: string,
   description?: string,
 ): Promise<Workspace> {
-  const res = await fetch(`${API_URL}/workspaces`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ name, description }),
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces`, { method: "POST", json: true, body: JSON.stringify({ name, description }) });
   return handleResponse<Workspace>(res);
 }

@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
@@ -23,9 +24,7 @@ export async function getChannelsApi(
   accessToken: string,
   workspaceId: string,
 ): Promise<Channel[]> {
-  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/channels`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/channels`);
   return handleResponse<Channel[]>(res);
 }
 
@@ -34,9 +33,7 @@ export async function getChannelApi(
   accessToken: string,
   channelId: string,
 ): Promise<Channel> {
-  const res = await fetch(`${API_URL}/channels/${channelId}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/channels/${channelId}`);
   return handleResponse<Channel>(res);
 }
 
@@ -45,8 +42,5 @@ export async function joinChannelApi(
   accessToken: string,
   channelId: string,
 ): Promise<void> {
-  await fetch(`${API_URL}/channels/${channelId}/members/me`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  await fetchWithAuth(`${API_URL}/channels/${channelId}/members/me`, { method: "POST" });
 }
