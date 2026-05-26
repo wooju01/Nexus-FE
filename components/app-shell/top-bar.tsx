@@ -13,6 +13,7 @@ import {
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { useUser } from "@/features/auth/user-provider";
+import { useWorkspace } from "@/features/workspace/workspace-provider";
 import { getAccessToken, clearTokens } from "@/lib/auth/tokens";
 import {
   getNotificationsApi,
@@ -34,6 +35,7 @@ const STATUS_MAP: Record<string, Presence> = {
 export function TopBar() {
   const router = useRouter();
   const { user, isLoading } = useUser();
+  const { currentWorkspace, workspaces, switchWorkspace } = useWorkspace();
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -44,6 +46,10 @@ export function TopBar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const userButtonRef = useRef<HTMLButtonElement>(null);
+
+  const [isWsSwitcherOpen, setIsWsSwitcherOpen] = useState(false);
+  const wsSwitcherRef = useRef<HTMLDivElement>(null);
+  const wsSwitcherButtonRef = useRef<HTMLButtonElement>(null);
 
   // 초기 미읽음 카운트 fetch
   useEffect(() => {
@@ -69,7 +75,7 @@ export function TopBar() {
     };
   }, []);
 
-  // 알림 패널 + 유저 메뉴 외부 클릭 시 닫기
+  // 알림 패널 + 유저 메뉴 + 워크스페이스 스위처 외부 클릭 시 닫기
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -85,6 +91,13 @@ export function TopBar() {
         !userButtonRef.current?.contains(e.target as Node)
       ) {
         setIsUserMenuOpen(false);
+      }
+      if (
+        wsSwitcherRef.current &&
+        !wsSwitcherRef.current.contains(e.target as Node) &&
+        !wsSwitcherButtonRef.current?.contains(e.target as Node)
+      ) {
+        setIsWsSwitcherOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -118,6 +131,18 @@ export function TopBar() {
   function handleUserMenuToggle() {
     setIsUserMenuOpen((prev) => !prev);
     setIsPanelOpen(false);
+    setIsWsSwitcherOpen(false);
+  }
+
+  function handleWsSwitcherToggle() {
+    setIsWsSwitcherOpen((prev) => !prev);
+    setIsPanelOpen(false);
+    setIsUserMenuOpen(false);
+  }
+
+  function handleSwitchWorkspace(ws: NonNullable<typeof currentWorkspace>) {
+    switchWorkspace(ws);
+    setIsWsSwitcherOpen(false);
   }
 
   function handleLogout() {
@@ -127,18 +152,75 @@ export function TopBar() {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border-subtle bg-surface-base px-4">
-      <Link
-        href="/dashboard"
-        aria-label="Nexus · Aether Labs 워크스페이스"
-        className="flex items-center gap-2 text-sm font-semibold tracking-tight"
-      >
-        <span className="text-fg-primary">Nexus</span>
-        <span aria-hidden="true" className="text-fg-tertiary">
-          /
-        </span>
-        <span className="text-fg-primary">Aether Labs</span>
-        <ChevronDownIcon className="size-3.5 text-fg-tertiary" />
-      </Link>
+      {/* 워크스페이스 스위처 */}
+      <div className="relative">
+        <button
+          ref={wsSwitcherButtonRef}
+          type="button"
+          onClick={handleWsSwitcherToggle}
+          aria-label="워크스페이스 전환"
+          aria-expanded={isWsSwitcherOpen}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold tracking-tight transition-colors",
+            isWsSwitcherOpen ? "bg-surface-elevated" : "hover:bg-surface-elevated",
+          )}
+        >
+          <span className="text-fg-primary">Nexus</span>
+          <span aria-hidden="true" className="text-fg-tertiary">/</span>
+          <span className="text-fg-primary">
+            {currentWorkspace?.name ?? "워크스페이스"}
+          </span>
+          <ChevronDownIcon
+            className={cn(
+              "size-3.5 text-fg-tertiary transition-transform",
+              isWsSwitcherOpen && "rotate-180",
+            )}
+          />
+        </button>
+
+        {isWsSwitcherOpen ? (
+          <div
+            ref={wsSwitcherRef}
+            className="absolute left-0 top-11 z-50 w-56 rounded-xl border border-border-subtle bg-surface-base shadow-2xl"
+          >
+            <div className="p-1">
+              <p className="px-3 py-1.5 text-[11px] font-medium text-fg-tertiary uppercase tracking-wide">
+                워크스페이스
+              </p>
+              {workspaces.map((ws) => (
+                <button
+                  key={ws.id}
+                  type="button"
+                  onClick={() => handleSwitchWorkspace(ws)}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                    ws.id === currentWorkspace?.id
+                      ? "bg-surface-elevated text-fg-primary font-medium"
+                      : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
+                  )}
+                >
+                  {/* 워크스페이스 아이콘 또는 이니셜 */}
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-white">
+                    {ws.name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="truncate">{ws.name}</span>
+                  {ws.id === currentWorkspace?.id && (
+                    <svg
+                      className="ml-auto size-3.5 shrink-0 text-accent"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       <div className="flex flex-1 justify-center">
         <label className="relative flex w-full max-w-xl items-center">
