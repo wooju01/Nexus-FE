@@ -278,13 +278,13 @@ export function TopBar() {
           ) : null}
         </div>
 
-        <button
-          type="button"
+        <Link
+          href="/calendar"
           aria-label="캘린더"
           className="flex size-9 items-center justify-center rounded-lg text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
         >
           <CalendarIcon />
-        </button>
+        </Link>
 
         {/* 유저 메뉴 */}
         <div className="relative ml-2">
