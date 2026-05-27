@@ -20,6 +20,7 @@
 import type { CalendarEvent, WorkspaceId } from "@/types/domain";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 type ApiError = {
   message: string;
@@ -35,12 +36,6 @@ async function handleResponse<T>(res: Response): Promise<T> {
   throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
 }
 
-function authHeaders(accessToken: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${accessToken}`,
-  };
-}
-
 export type ListEventsParams = {
   workspaceId: WorkspaceId;
   /** ISO 8601. 양쪽 모두 필수. 60일 초과 범위는 BE 가 400 으로 거절. */
@@ -54,9 +49,8 @@ export async function listCalendarEvents(
   params: ListEventsParams,
 ): Promise<CalendarEvent[]> {
   const qs = new URLSearchParams({ from: params.from, to: params.to });
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${API_URL}/workspaces/${params.workspaceId}/calendar/events?${qs.toString()}`,
-    { headers: authHeaders(accessToken) },
   );
   return handleResponse<CalendarEvent[]>(res);
 }
@@ -72,9 +66,8 @@ export async function getCalendarEventById(
   workspaceId: WorkspaceId,
   eventId: string,
 ): Promise<CalendarEvent | null> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${API_URL}/workspaces/${workspaceId}/calendar/events/${eventId}`,
-    { headers: authHeaders(accessToken) },
   );
   if (res.status === 404) return null;
   return handleResponse<CalendarEvent>(res);
@@ -97,16 +90,9 @@ export async function createCalendarEvent(
   workspaceId: WorkspaceId,
   input: CreateEventInput,
 ): Promise<CalendarEvent> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${API_URL}/workspaces/${workspaceId}/calendar/events`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(accessToken),
-      },
-      body: JSON.stringify(input),
-    },
+    { method: "POST", json: true, body: JSON.stringify(input) },
   );
   return handleResponse<CalendarEvent>(res);
 }
@@ -120,16 +106,9 @@ export async function updateCalendarEvent(
   eventId: string,
   input: UpdateEventInput,
 ): Promise<CalendarEvent> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${API_URL}/workspaces/${workspaceId}/calendar/events/${eventId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(accessToken),
-      },
-      body: JSON.stringify(input),
-    },
+    { method: "PATCH", json: true, body: JSON.stringify(input) },
   );
   return handleResponse<CalendarEvent>(res);
 }
@@ -140,12 +119,9 @@ export async function deleteCalendarEvent(
   workspaceId: WorkspaceId,
   eventId: string,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await fetchWithAuth(
     `${API_URL}/workspaces/${workspaceId}/calendar/events/${eventId}`,
-    {
-      method: "DELETE",
-      headers: authHeaders(accessToken),
-    },
+    { method: "DELETE" },
   );
   await handleResponse<void>(res);
 }

@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
@@ -37,9 +38,7 @@ export async function getNotificationsApi(
 ): Promise<{ items: Notification[]; nextCursor: string | null }> {
   const params = new URLSearchParams();
   if (unread !== undefined) params.set("unread", String(unread));
-  const res = await fetch(`${API_URL}/notifications?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/notifications?${params}`);
   return handleResponse(res);
 }
 
@@ -47,9 +46,7 @@ export async function getNotificationsApi(
 export async function countUnreadApi(
   accessToken: string,
 ): Promise<{ count: number }> {
-  const res = await fetch(`${API_URL}/notifications/count`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetchWithAuth(`${API_URL}/notifications/count`);
   return handleResponse(res);
 }
 
@@ -58,16 +55,10 @@ export async function markAsReadApi(
   accessToken: string,
   notificationId: string,
 ): Promise<void> {
-  await fetch(`${API_URL}/notifications/${notificationId}/read`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  await fetchWithAuth(`${API_URL}/notifications/${notificationId}/read`, { method: "PATCH" });
 }
 
 // PATCH /notifications/read-all
 export async function markAllAsReadApi(accessToken: string): Promise<void> {
-  await fetch(`${API_URL}/notifications/read-all`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  await fetchWithAuth(`${API_URL}/notifications/read-all`, { method: "PATCH" });
 }
