@@ -28,11 +28,11 @@ export async function loginApi(email: string, password: string): Promise<AuthTok
 }
 
 //** POST /auth/signup */
-export async function signupApi(name: string, email: string, password: string): Promise<AuthTokens> {
+export async function signupApi(name: string, username: string, email: string, password: string): Promise<AuthTokens> {
   const res = await fetch(`${API_URL}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, username, email, password }),
   });
   return handleResponse<AuthTokens>(res);
 }
