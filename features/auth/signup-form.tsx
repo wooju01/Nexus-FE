@@ -120,7 +120,7 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
             id="signup-username"
             type="text"
             autoComplete="username"
-            placeholder="wooju._00"
+            placeholder="test_00"
             value={values.username}
             onChange={(e) => handleChange("username", e.target.value.toLowerCase())}
             hasError={Boolean(errors.username)}

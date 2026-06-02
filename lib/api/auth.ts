@@ -51,6 +51,7 @@ export type UserProfile = {
   id: string;
   email: string;
   name: string;
+  username: string | null;
   avatar: string | null;
   status: "ONLINE" | "AWAY" | "DND" | "OFFLINE";
   createdAt: string;
@@ -67,7 +68,7 @@ export async function getProfileApi(accessToken: string): Promise<UserProfile> {
 /** PATCH /auth/profile */
 export async function updateProfileApi(
   accessToken: string,
-  data: { name?: string },
+  data: { name?: string; username?: string; avatar?: string },
 ): Promise<UserProfile> {
   const res = await fetch(`${API_URL}/auth/profile`, {
     method: "PATCH",
