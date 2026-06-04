@@ -42,6 +42,12 @@ export function ProfileSettings() {
   const [nameSaving, setNameSaving] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
 
+  // username 편집
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [usernameSaved, setUsernameSaved] = useState(false);
+
   // 상태 변경
   const [presence, setPresence] = useState<PresenceStatus>("ONLINE");
   const [presenceSaving, setPresenceSaving] = useState(false);
@@ -61,6 +67,7 @@ export function ProfileSettings() {
       .then((p) => {
         setProfile(p);
         setName(p.name);
+        setUsername(p.username ?? "");
         setPresence(p.status);
       })
       .catch(console.error);
@@ -85,6 +92,28 @@ export function ProfileSettings() {
       setNameError(e instanceof Error ? e.message : "저장 실패");
     } finally {
       setNameSaving(false);
+    }
+  }
+
+  async function handleSaveUsername() {
+    const trimmed = username.trim();
+    if (trimmed && !/^[a-z0-9._]{3,20}$/.test(trimmed)) {
+      setUsernameError("소문자·숫자·점·언더스코어만 사용 가능하며 3~20자여야 합니다.");
+      return;
+    }
+    const token = getAccessToken();
+    if (!token) return;
+    setUsernameSaving(true);
+    setUsernameError("");
+    try {
+      const updated = await updateProfileApi(token, { username: trimmed || undefined });
+      setProfile(updated);
+      setUsernameSaved(true);
+      setTimeout(() => setUsernameSaved(false), 2000);
+    } catch (e) {
+      setUsernameError(e instanceof Error ? e.message : "저장 실패");
+    } finally {
+      setUsernameSaving(false);
     }
   }
 
@@ -191,6 +220,38 @@ export function ProfileSettings() {
             </Button>
           </div>
           <FieldError message={nameError} />
+        </div>
+
+        <div className="mt-5 space-y-1">
+          <Label htmlFor="profile-username">사용자 태그 (username)</Label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-fg-tertiary">#</span>
+              <Input
+                id="profile-username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value.toLowerCase());
+                  if (usernameError) setUsernameError("");
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveUsername(); }}
+                placeholder="test_00"
+                hasError={Boolean(usernameError)}
+                className="flex-1 pl-7"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={handleSaveUsername}
+              isLoading={usernameSaving}
+              disabled={usernameSaving || username === (profile?.username ?? "")}
+            >
+              {usernameSaved ? "저장됨 ✓" : "저장"}
+            </Button>
+          </div>
+          <p className="text-xs text-fg-tertiary">소문자·숫자·점·언더스코어, 3~20자. 친구 추가 시 사용됩니다.</p>
+          <FieldError message={usernameError} />
         </div>
       </section>
 

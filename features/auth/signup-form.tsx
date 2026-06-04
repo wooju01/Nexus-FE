@@ -31,6 +31,7 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
   const router = useRouter();
   const [values, setValues] = useState<SignupInput>({
     name: "",
+    username: "",
     email: prefillEmail ?? "",
     password: "",
     passwordConfirm: "",
@@ -58,6 +59,7 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
     try {
       const tokens = await signupApi(
         values.name.trim(),
+        values.username,
         values.email,
         values.password,
       );
@@ -106,6 +108,27 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
           hasError={Boolean(errors.name)}
         />
         <FieldError message={errors.name} />
+      </div>
+
+      <div>
+        <Label htmlFor="signup-username">사용자 태그</Label>
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-fg-tertiary">
+            #
+          </span>
+          <Input
+            id="signup-username"
+            type="text"
+            autoComplete="username"
+            placeholder="test_00"
+            value={values.username}
+            onChange={(e) => handleChange("username", e.target.value.toLowerCase())}
+            hasError={Boolean(errors.username)}
+            className="pl-7"
+          />
+        </div>
+        <p className="mt-1 text-xs text-fg-tertiary">소문자·숫자·점·언더스코어, 3~20자</p>
+        <FieldError message={errors.username} />
       </div>
 
       <div>

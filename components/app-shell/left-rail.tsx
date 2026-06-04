@@ -38,10 +38,10 @@ const RAIL_ITEMS: ReadonlyArray<RailItem> = [
   },
   { label: "Docs", icon: DocsIcon },
   {
-    label: "People",
-    href: "/settings/profile",
+    label: "친구",
+    href: "/friends",
     icon: PeopleIcon,
-    activePrefix: "/settings",
+    activePrefix: "/friends",
   },
 ];
 
