@@ -38,3 +38,10 @@ export function recordVisit(workspaceId: string, item: Omit<RecentItem, "visited
   localStorage.setItem(storageKey(workspaceId), JSON.stringify(updated));
   return updated;
 }
+
+/** 특정 항목 제거 (삭제된 채널/프로젝트 정리용) */
+export function removeFromRecent(workspaceId: string, id: string): RecentItem[] {
+  const updated = getRecent(workspaceId).filter((i) => i.id !== id);
+  localStorage.setItem(storageKey(workspaceId), JSON.stringify(updated));
+  return updated;
+}

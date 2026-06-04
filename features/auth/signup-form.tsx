@@ -102,7 +102,7 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
           id="signup-name"
           type="text"
           autoComplete="name"
-          placeholder="예: 박지우"
+          placeholder="test"
           value={values.name}
           onChange={(e) => handleChange("name", e.target.value)}
           hasError={Boolean(errors.name)}
