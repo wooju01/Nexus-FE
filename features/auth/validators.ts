@@ -16,6 +16,7 @@ export type ValidationErrors<T extends Record<string, unknown>> = Partial<
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+const USERNAME_REGEX = /^[a-z0-9._]{3,20}$/;
 
 export type LoginInput = {
   email: string;
@@ -24,6 +25,7 @@ export type LoginInput = {
 
 export type SignupInput = {
   name: string;
+  username: string;
   email: string;
   password: string;
   passwordConfirm: string;
@@ -56,6 +58,12 @@ export function validateSignup(
     errors.name = "이름을 입력해주세요.";
   } else if (trimmedName.length > 32) {
     errors.name = "이름은 32자 이하여야 합니다.";
+  }
+
+  if (!input.username) {
+    errors.username = "username을 입력해주세요.";
+  } else if (!USERNAME_REGEX.test(input.username)) {
+    errors.username = "소문자·숫자·점·언더스코어만 사용 가능하며 3~20자여야 합니다.";
   }
 
   if (!input.email.trim()) {

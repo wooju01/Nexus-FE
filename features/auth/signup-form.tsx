@@ -16,6 +16,8 @@ import { setTokens } from "@/lib/auth/tokens";
 import type { SignupInput, ValidationErrors } from "./validators";
 import { hasErrors, validateSignup } from "./validators";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
 type FieldValue = string | boolean;
 
 type SignupFormProps = {
@@ -29,6 +31,7 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
   const router = useRouter();
   const [values, setValues] = useState<SignupInput>({
     name: "",
+    username: "",
     email: prefillEmail ?? "",
     password: "",
     passwordConfirm: "",
@@ -56,6 +59,7 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
     try {
       const tokens = await signupApi(
         values.name.trim(),
+        values.username,
         values.email,
         values.password,
       );
@@ -104,6 +108,27 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
           hasError={Boolean(errors.name)}
         />
         <FieldError message={errors.name} />
+      </div>
+
+      <div>
+        <Label htmlFor="signup-username">사용자 태그</Label>
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-fg-tertiary">
+            #
+          </span>
+          <Input
+            id="signup-username"
+            type="text"
+            autoComplete="username"
+            placeholder="test_00"
+            value={values.username}
+            onChange={(e) => handleChange("username", e.target.value.toLowerCase())}
+            hasError={Boolean(errors.username)}
+            className="pl-7"
+          />
+        </div>
+        <p className="mt-1 text-xs text-fg-tertiary">소문자·숫자·점·언더스코어, 3~20자</p>
+        <FieldError message={errors.username} />
       </div>
 
       <div>
@@ -190,6 +215,38 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
       >
         {isSubmitting ? "계정 생성 중..." : "계정 만들기"}
       </Button>
+
+      <div className="relative my-2">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border-subtle" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-surface-base px-2 text-fg-tertiary">또는 소셜 계정으로 시작</span>
+        </div>
+      </div>
+
+      <a
+        href={`${API_URL}/auth/google`}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-base px-4 py-2.5 text-sm font-medium text-fg-primary transition-colors hover:bg-surface-subtle"
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
+          <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
+        </svg>
+        Google로 시작하기
+      </a>
+
+      <a
+        href={`${API_URL}/auth/kakao`}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border-subtle bg-[#FEE500] px-4 py-2.5 text-sm font-medium text-[#191919] transition-opacity hover:opacity-90"
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#191919" d="M9 0C4.029 0 0 3.136 0 7c0 2.496 1.659 4.685 4.166 5.928L3.1 17.1c-.09.33.27.6.56.41l5.34-3.55c.665.07 1.337.04 2 0 4.971 0 9-3.134 9-7S13.971 0 9 0z" />
+        </svg>
+        카카오로 시작하기
+      </a>
     </form>
   );
 }
