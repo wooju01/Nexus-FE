@@ -59,7 +59,7 @@ export function DmStartModal({
 
     setIsCreating(targetUserId);
     try {
-      const dm = await createDmApi(token, workspaceId, targetUserId);
+      const dm = await createDmApi(token, targetUserId);
       onDmCreated?.();
       onClose();
       router.push(`/channels/${dm.id}`);
