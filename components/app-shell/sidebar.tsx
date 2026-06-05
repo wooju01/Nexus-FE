@@ -49,6 +49,8 @@ export function Sidebar() {
   const [recent, setRecent] = useState<RecentItem[]>([]);
 
   const dmUserMap = useRef<Record<string, { name: string; status: string }>>({});
+  const dmsRef = useRef<DmChannel[]>([]);
+  useEffect(() => { dmsRef.current = dms; }, [dms]);
 
   useEffect(() => {
     if (!wsId) return;
@@ -92,13 +94,16 @@ export function Sidebar() {
     if (!token) return;
 
     getChannelsApi(token, currentWorkspace.id).then(setChannels).catch(console.error);
-    getDmsApi(token, currentWorkspace.id)
+    getDmsApi(token)
       .then((list) => {
         list.forEach((dm) => {
           const other = dm.members[0]?.user;
           if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
         });
         setDms(list);
+        // DM 채널 룸에 자동 join — 메시지 알림 수신용
+        const socket = getSocket(token);
+        list.forEach((dm) => socket.emit("channel.join", dm.id));
       })
       .catch(console.error);
     getProjectsApi(token, currentWorkspace.id).then(setProjects).catch(console.error);
@@ -122,6 +127,21 @@ export function Sidebar() {
       const currentChannelId = window.location.pathname.split("/channels/")[1];
       if (msg.channelId === currentChannelId) return;
       setUnreadCounts((prev) => ({ ...prev, [msg.channelId]: (prev[msg.channelId] ?? 0) + 1 }));
+
+      // 모르는 채널이면 새 DM 도착 — DM 목록 즉시 갱신
+      const known = dmsRef.current.some((dm) => dm.id === msg.channelId);
+      if (!known) {
+        getDmsApi(token!).then((list) => {
+          list.forEach((dm) => {
+            const other = dm.members[0]?.user;
+            if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
+          });
+          setDms(list);
+          // 새로 생긴 DM 룸도 join
+          const s = getSocket(token!);
+          list.forEach((dm) => s.emit("channel.join", dm.id));
+        }).catch(console.error);
+      }
     }
     socket.on("message.created", onMessageCreated);
     return () => { socket.off("message.created", onMessageCreated); };
@@ -146,7 +166,7 @@ export function Sidebar() {
     if (!currentWorkspace) return;
     const token = getAccessToken();
     if (!token) return;
-    getDmsApi(token, currentWorkspace.id).then(setDms).catch(console.error);
+    getDmsApi(token).then(setDms).catch(console.error);
   }
 
   return (
