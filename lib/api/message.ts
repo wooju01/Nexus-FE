@@ -13,6 +13,15 @@ export type MessageAuthor = {
   avatar: string | null;
 };
 
+export type MessageAttachment = {
+  id: string;
+  fileUrl: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  thumbnailUrl: string | null;
+};
+
 export type Message = {
   id: string;
   channelId: string;
@@ -23,6 +32,7 @@ export type Message = {
   deletedAt: string | null;
   createdAt: string;
   author: MessageAuthor;
+  attachments: MessageAttachment[];
   reactions: { emoji: string; userId: string }[];
   _count?: { replies: number };
 };
@@ -44,8 +54,18 @@ export async function sendMessageApi(
   accessToken: string,
   channelId: string,
   content: unknown,
+  attachments?: Pick<MessageAttachment, "fileUrl" | "fileName" | "mimeType" | "fileSize">[],
 ): Promise<Message> {
-  const res = await fetchWithAuth(`${API_URL}/channels/${channelId}/messages`, { method: "POST", json: true, body: JSON.stringify({ content }) });
+  const body: { content: unknown; attachments?: { url: string; fileName: string; mimeType: string; fileSize: number }[] } = { content };
+  if (attachments?.length) {
+    body.attachments = attachments.map((a) => ({
+      url: a.fileUrl,
+      fileName: a.fileName,
+      mimeType: a.mimeType,
+      fileSize: a.fileSize,
+    }));
+  }
+  const res = await fetchWithAuth(`${API_URL}/channels/${channelId}/messages`, { method: "POST", json: true, body: JSON.stringify(body) });
   return handleResponse<Message>(res);
 }
 
