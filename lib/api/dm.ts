@@ -1,5 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
@@ -9,7 +10,6 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export type DmChannel = {
   id: string;
-  workspaceId: string;
   type: "DM";
   members: {
     user: {
@@ -21,21 +21,21 @@ export type DmChannel = {
   }[];
 };
 
-// GET /workspaces/:workspaceId/dms
-export async function getDmsApi(
-  accessToken: string,
-  workspaceId: string,
-): Promise<DmChannel[]> {
-  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/dms`);
+// GET /dms — 글로벌 DM 목록
+export async function getDmsApi(_token: string): Promise<DmChannel[]> {
+  const res = await fetchWithAuth(`${API_URL}/dms`);
   return handleResponse<DmChannel[]>(res);
 }
 
-// POST /workspaces/:workspaceId/dms
+// POST /dms — DM 시작 (글로벌)
 export async function createDmApi(
-  accessToken: string,
-  workspaceId: string,
+  _token: string,
   targetUserId: string,
 ): Promise<{ id: string }> {
-  const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/dms`, { method: "POST", json: true, body: JSON.stringify({ targetUserId }) });
+  const res = await fetchWithAuth(`${API_URL}/dms`, {
+    method: "POST",
+    json: true,
+    body: JSON.stringify({ targetUserId }),
+  });
   return handleResponse<{ id: string }>(res);
 }

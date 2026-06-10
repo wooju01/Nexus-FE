@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { EditIcon, HashIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/icons";
+import { EditIcon, HashIcon, ReplyIcon, SmileIcon, TrashIcon, XIcon } from "@/components/icons";
 import { getAccessToken } from "@/lib/auth/tokens";
 import { getProfileApi } from "@/lib/api/auth";
 import { getChannelApi, type Channel } from "@/lib/api/channel";
@@ -14,11 +14,22 @@ import {
   addReactionApi,
   removeReactionApi,
   type Message,
+  type MessageAttachment,
 } from "@/lib/api/message";
+import { uploadFileApi } from "@/lib/api/upload";
 import { getSocket } from "@/lib/ws/client";
 import { cn } from "@/lib/utils/cn";
 
 import { ThreadPanel } from "./thread-panel";
+
+type PendingFile = {
+  id: string;
+  file: File;
+  preview: string; // objectURL — 컴포넌트 언마운트 시 revoke 필요
+  uploading: boolean;
+  result: MessageAttachment | null;
+  error: boolean;
+};
 
 const PRESET_EMOJIS = ["👍", "❤️", "😂", "🎉", "🙏", "👀", "🚀", "✅"];
 
@@ -79,6 +90,7 @@ export function ChannelView({ channelId }: { channelId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
@@ -181,19 +193,106 @@ export function ChannelView({ channelId }: { channelId: string }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // objectURL 메모리 누수 방지 — 파일이 제거될 때 revoke
+  useEffect(() => {
+    return () => {
+      pendingFiles.forEach((pf) => URL.revokeObjectURL(pf.preview));
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const imageItems = Array.from(e.clipboardData.items).filter((item) =>
+        item.type.startsWith("image/"),
+      );
+      if (imageItems.length === 0) return;
+
+      e.preventDefault();
+
+      const newFiles: PendingFile[] = imageItems
+        .map((item) => item.getAsFile())
+        .filter((f): f is File => f !== null)
+        .map((file) => ({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          file,
+          preview: URL.createObjectURL(file),
+          uploading: true,
+          result: null,
+          error: false,
+        }));
+
+      setPendingFiles((prev) => [...prev, ...newFiles]);
+
+      // paste 즉시 업로드 — Discord/Slack 방식
+      newFiles.forEach((pf) => {
+        uploadFileApi(pf.file)
+          .then((res) => {
+            setPendingFiles((prev) =>
+              prev.map((f) =>
+                f.id === pf.id
+                  ? {
+                      ...f,
+                      uploading: false,
+                      result: {
+                        id: pf.id,
+                        fileUrl: res.url,
+                        fileName: res.fileName,
+                        mimeType: res.mimeType,
+                        fileSize: res.fileSize,
+                        thumbnailUrl: null,
+                      },
+                    }
+                  : f,
+              ),
+            );
+          })
+          .catch(() => {
+            setPendingFiles((prev) =>
+              prev.map((f) => (f.id === pf.id ? { ...f, uploading: false, error: true } : f)),
+            );
+          });
+      });
+    },
+    [],
+  );
+
+  function removePendingFile(id: string) {
+    setPendingFiles((prev) => {
+      const target = prev.find((f) => f.id === id);
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((f) => f.id !== id);
+    });
+  }
+
   async function handleSend() {
-    if (!draft.trim() || isSending) return;
+    const hasText = draft.trim().length > 0;
+    const uploadedAttachments = pendingFiles
+      .filter((f) => f.result !== null)
+      .map((f) => f.result!);
+    if ((!hasText && uploadedAttachments.length === 0) || isSending) return;
+
+    // 아직 업로드 중인 파일이 있으면 대기
+    if (pendingFiles.some((f) => f.uploading)) return;
+
     const token = getAccessToken();
     if (!token) return;
 
     const content = {
       type: "doc",
-      content: [{ type: "paragraph", content: [{ type: "text", text: draft.trim() }] }],
+      content: hasText
+        ? [{ type: "paragraph", content: [{ type: "text", text: draft.trim() }] }]
+        : [{ type: "paragraph" }],
     };
     setIsSending(true);
     try {
-      await sendMessageApi(token, channelId, content);
+      await sendMessageApi(
+        token,
+        channelId,
+        content,
+        uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
+      );
       setDraft("");
+      setPendingFiles([]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -351,12 +450,35 @@ export function ChannelView({ channelId }: { channelId: string }) {
                           </div>
                         </div>
                       ) : (
-                        <p className="whitespace-pre-wrap text-sm text-fg-primary">
-                          {tiptapToText(m.content)}
-                          {m.editedAt ? (
-                            <span className="ml-1 text-[10px] text-fg-tertiary">(수정됨)</span>
+                        <>
+                          <p className="whitespace-pre-wrap text-sm text-fg-primary">
+                            {tiptapToText(m.content)}
+                            {m.editedAt ? (
+                              <span className="ml-1 text-[10px] text-fg-tertiary">(수정됨)</span>
+                            ) : null}
+                          </p>
+                          {m.attachments && m.attachments.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {m.attachments.map((att) =>
+                                att.mimeType.startsWith("image/") ? (
+                                  <a
+                                    key={att.id}
+                                    href={att.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={att.fileUrl}
+                                      alt={att.fileName}
+                                      className="max-h-72 max-w-xs rounded-lg border border-border-subtle object-contain hover:opacity-90"
+                                    />
+                                  </a>
+                                ) : null,
+                              )}
+                            </div>
                           ) : null}
-                        </p>
+                        </>
                       )}
 
                       {grouped.length > 0 ? (
@@ -472,6 +594,41 @@ export function ChannelView({ channelId }: { channelId: string }) {
         </div>
 
         <div className="shrink-0 border-t border-border-subtle px-5 py-3">
+          {/* 붙여넣기된 이미지 프리뷰 */}
+          {pendingFiles.length > 0 ? (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {pendingFiles.map((pf) => (
+                <div key={pf.id} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={pf.preview}
+                    alt={pf.file.name}
+                    className={cn(
+                      "h-20 w-20 rounded-lg border border-border-subtle object-cover",
+                      pf.error ? "opacity-40 grayscale" : "",
+                    )}
+                  />
+                  {pf.uploading ? (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
+                      <span className="text-[10px] font-medium text-white">업로드 중...</span>
+                    </div>
+                  ) : null}
+                  {pf.error ? (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
+                      <span className="text-[10px] font-medium text-red-400">실패</span>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => removePendingFile(pf.id)}
+                    className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-surface-overlay text-fg-secondary hover:text-fg-primary"
+                  >
+                    <XIcon className="size-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="flex gap-2">
             <textarea
               value={draft}
@@ -482,17 +639,22 @@ export function ChannelView({ channelId }: { channelId: string }) {
                   handleSend();
                 }
               }}
+              onPaste={handlePaste}
               rows={2}
-              placeholder={`Message #${channelName}... (Enter로 전송, Shift+Enter 줄바꿈)`}
+              placeholder={`Message #${channelName}... (Enter로 전송, Ctrl+V로 이미지 첨부)`}
               className="flex-1 resize-none rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:border-border-strong focus:outline-none"
             />
             <button
               type="button"
               onClick={handleSend}
-              disabled={!draft.trim() || isSending}
+              disabled={
+                (!draft.trim() && pendingFiles.filter((f) => f.result).length === 0) ||
+                isSending ||
+                pendingFiles.some((f) => f.uploading)
+              }
               className="rounded-lg bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
             >
-              전송
+              {pendingFiles.some((f) => f.uploading) ? "업로드 중..." : "전송"}
             </button>
           </div>
         </div>
