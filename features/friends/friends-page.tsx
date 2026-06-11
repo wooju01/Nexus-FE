@@ -5,9 +5,11 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getFriendsApi,
   getReceivedRequestsApi,
+  getSentRequestsApi,
   sendFriendRequestApi,
   acceptFriendRequestApi,
   declineFriendRequestApi,
+  cancelFriendRequestApi,
   removeFriendApi,
 } from "@/lib/api/friends";
 import type { Friend, FriendRequest } from "@/lib/api/friends";
@@ -25,18 +27,21 @@ export function FriendsPage() {
   const [tab, setTab] = useState<Tab>("online");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
   const [addUsername, setAddUsername] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const load = useCallback(async () => {
-    const [f, r] = await Promise.all([
+    const [f, r, s] = await Promise.all([
       getFriendsApi(""),
       getReceivedRequestsApi(""),
+      getSentRequestsApi(""),
     ]);
     setFriends(f);
     setRequests(r);
+    setSentRequests(s);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -48,6 +53,11 @@ export function FriendsPage() {
 
   const handleDecline = async (requestId: string) => {
     await declineFriendRequestApi("", requestId);
+    load();
+  };
+
+  const handleCancel = async (requestId: string) => {
+    await cancelFriendRequestApi("", requestId);
     load();
   };
 
@@ -65,6 +75,7 @@ export function FriendsPage() {
       await sendFriendRequestApi("", addUsername.trim());
       setAddSuccess(true);
       setAddUsername("");
+      load();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "요청에 실패했습니다.");
     } finally {
@@ -199,6 +210,42 @@ export function FriendsPage() {
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
+                </button>
+              </div>
+            ))}
+
+            {/* 보낸 요청 */}
+            <p className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
+              보낸 요청 — {sentRequests.length}명
+            </p>
+            {sentRequests.length === 0 ? (
+              <p className="text-sm text-fg-tertiary">보낸 친구 요청이 없습니다.</p>
+            ) : null}
+            {sentRequests.map((req) => (
+              <div key={req.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-surface-elevated">
+                <div className="relative size-9 shrink-0 rounded-full bg-surface-overlay">
+                  {req.receiver?.avatar ? (
+                    <img src={req.receiver.avatar} alt="" className="size-full rounded-full object-cover" />
+                  ) : (
+                    <span className="flex size-full items-center justify-center text-sm font-medium text-fg-secondary">
+                      {req.receiver?.name?.[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium text-fg-primary">{req.receiver?.name}</p>
+                  {req.receiver?.username ? (
+                    <p className="text-xs text-fg-tertiary">#{req.receiver.username}</p>
+                  ) : null}
+                </div>
+                <span className="text-xs text-fg-tertiary">대기 중</span>
+                <button
+                  type="button"
+                  onClick={() => handleCancel(req.id)}
+                  className="rounded-full bg-surface-elevated px-2.5 py-1 text-xs text-fg-tertiary hover:bg-red-600/20 hover:text-red-400 transition-colors"
+                  title="요청 취소"
+                >
+                  요청 취소
                 </button>
               </div>
             ))}
