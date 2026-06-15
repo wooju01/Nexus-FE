@@ -72,6 +72,16 @@ export async function getTasksApi(accessToken: string, projectId: string): Promi
   return handleResponse<Task[]>(res);
 }
 
+// GET /tasks/my — 현재 유저가 담당자인 미완료 태스크 (프로젝트 횡단)
+export type MyTask = Task & {
+  project: { id: string; name: string };
+};
+
+export async function getMyTasksApi(accessToken: string): Promise<MyTask[]> {
+  const res = await fetchWithAuth(`${API_URL}/tasks/my`);
+  return handleResponse<MyTask[]>(res);
+}
+
 export async function createTaskApi(
   accessToken: string,
   projectId: string,

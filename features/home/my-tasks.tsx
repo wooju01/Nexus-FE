@@ -1,18 +1,47 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { ChevronRightIcon } from "@/components/icons";
-import { LabelPill } from "@/components/ui/label-pill";
 import { PriorityPill } from "@/components/ui/priority-pill";
-import { getProject } from "@/lib/mocks/projects";
-import { getTasksAssignedTo } from "@/lib/mocks/tasks";
-import { CURRENT_USER_ID } from "@/lib/mocks/users";
+import { getAccessToken } from "@/lib/auth/tokens";
+import { getMyTasksApi, type MyTask } from "@/lib/api/task";
 
-/**
- * 현재 사용자에게 할당된 Task 목록 (Home 우측 컬럼).
- * 실제로는 오늘/이번 주 단위로 필터링하겠지만, 지금은 모두 표시.
- */
+function formatDueDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const due = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  const diff = Math.floor((due.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) return `${Math.abs(diff)}일 초과`;
+  if (diff === 0) return "오늘 마감";
+  if (diff === 1) return "내일 마감";
+  return `${diff}일 남음`;
+}
+
+function isDueSoon(iso: string | null): boolean {
+  if (!iso) return false;
+  const due = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return due <= today;
+}
+
 export function MyTasks() {
-  const tasks = getTasksAssignedTo(CURRENT_USER_ID);
+  const [tasks, setTasks] = useState<MyTask[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    getMyTasksApi(token)
+      .then(setTasks)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <section
@@ -21,57 +50,72 @@ export function MyTasks() {
     >
       <header className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
         <h2 className="text-sm font-semibold text-fg-primary">My tasks</h2>
-        <span className="text-xs text-fg-tertiary">{tasks.length}</span>
+        <span className="text-xs text-fg-tertiary">
+          {loading ? "..." : tasks.length}
+        </span>
       </header>
 
-      <ul className="divide-y divide-border-subtle">
-        {tasks.map((task) => {
-          const project = getProject(task.projectId);
-          return (
-            <li key={task.id}>
-              <Link
-                // 실제 라우트는 /projects/[slug]/tasks/[id] — 후속 단계.
-                href={project ? `/projects/${project.slug}` : "#"}
-                className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-xs">
-                    <PriorityPill priority={task.priority} />
-                    <span className="font-mono text-fg-tertiary">
-                      {task.id}
-                    </span>
-                    {task.dueLabel ? (
-                      <>
-                        <span aria-hidden="true" className="text-fg-tertiary">
-                          ·
-                        </span>
-                        <span className="text-fg-secondary">
-                          {task.dueLabel}
-                        </span>
-                      </>
+      {loading ? (
+        <div className="px-4 py-6 text-center text-sm text-fg-tertiary">
+          불러오는 중...
+        </div>
+      ) : tasks.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-fg-tertiary">
+          할당된 태스크가 없어요.
+        </div>
+      ) : (
+        <ul className="divide-y divide-border-subtle">
+          {tasks.map((task) => {
+            const dueLabel = formatDueDate(task.dueDate);
+            const overdue = isDueSoon(task.dueDate);
+            return (
+              <li key={task.id}>
+                <Link
+                  href={`/projects/${task.projectId}`}
+                  className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      <PriorityPill priority={task.priority} />
+                      <span className="font-mono text-fg-tertiary">
+                        NX-{task.number}
+                      </span>
+                      <span className="truncate text-fg-tertiary">
+                        {task.project.name}
+                      </span>
+                      {dueLabel ? (
+                        <>
+                          <span aria-hidden="true" className="text-fg-tertiary">·</span>
+                          <span className={overdue ? "font-medium text-priority-p1" : "text-fg-secondary"}>
+                            {dueLabel}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 truncate text-sm text-fg-primary">
+                      {task.title}
+                    </p>
+                    {task.labels.length > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {task.labels.map((l) => (
+                          <span
+                            key={l.labelId}
+                            className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                            style={{ backgroundColor: `${l.label.color}25`, color: l.label.color }}
+                          >
+                            {l.label.name}
+                          </span>
+                        ))}
+                      </div>
                     ) : null}
                   </div>
-                  <p className="mt-1 truncate text-sm text-fg-primary">
-                    {task.title}
-                  </p>
-                  {task.labels.length > 0 ? (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {task.labels.map((l) => (
-                        <LabelPill
-                          key={l.name}
-                          label={l.name}
-                          color={l.color}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <ChevronRightIcon className="mt-1 size-4 shrink-0 text-fg-tertiary" />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+                  <ChevronRightIcon className="mt-1 size-4 shrink-0 text-fg-tertiary" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }

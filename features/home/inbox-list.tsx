@@ -1,57 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   AtSignIcon,
+  BellIcon,
   CheckCircleIcon,
-  CheckIcon,
   ReplyIcon,
 } from "@/components/icons";
-import { Avatar } from "@/components/ui/avatar";
-import { INBOX_ITEMS } from "@/lib/mocks/inbox";
-import { getUser } from "@/lib/mocks/users";
+import { getAccessToken } from "@/lib/auth/tokens";
+import {
+  getNotificationsApi,
+  markAsReadApi,
+  type Notification,
+  type NotificationType,
+} from "@/lib/api/notification";
 import { cn } from "@/lib/utils/cn";
-import type { InboxItem, InboxItemKind } from "@/types/domain";
 
-type TabKey = "all" | "mention" | "assigned" | "approval";
+type TabKey = "all" | "mention" | "assigned" | "other";
 
 const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
   { key: "all", label: "All" },
   { key: "mention", label: "Mentions" },
   { key: "assigned", label: "Assigned" },
-  { key: "approval", label: "Approvals" },
+  { key: "other", label: "Other" },
 ];
 
-const KIND_LABEL: Record<InboxItemKind, string> = {
-  mention: "Mention",
-  reply: "Reply",
-  assigned: "Assigned",
-  approval: "Approval",
+const TYPE_LABEL: Record<NotificationType, string> = {
+  MESSAGE_MENTION: "Mention",
+  DM_RECEIVED: "DM",
+  CHANNEL_INVITED: "Invited",
+  WORKSPACE_INVITED: "Invited",
+  TASK_ASSIGNED: "Assigned",
+  TASK_DUE_SOON: "Due soon",
+  TASK_COMMENTED: "Comment",
+  EVENT_UPCOMING: "Event",
+  EVENT_INVITED: "Invited",
 };
 
-function KindIcon({ kind }: { kind: InboxItemKind }) {
-  const className = "size-3.5";
-  switch (kind) {
-    case "mention":
-      return <AtSignIcon className={className} />;
-    case "reply":
-      return <ReplyIcon className={className} />;
-    case "assigned":
-      return <CheckCircleIcon className={className} />;
-    case "approval":
-      return <CheckIcon className={className} />;
+function tabMatch(n: Notification, tab: TabKey): boolean {
+  if (tab === "all") return true;
+  if (tab === "mention") return n.type === "MESSAGE_MENTION";
+  if (tab === "assigned") return n.type === "TASK_ASSIGNED";
+  return !["MESSAGE_MENTION", "TASK_ASSIGNED"].includes(n.type);
+}
+
+function NotifIcon({ type }: { type: NotificationType }) {
+  const cls = "size-3.5";
+  switch (type) {
+    case "MESSAGE_MENTION":
+      return <AtSignIcon className={cls} />;
+    case "TASK_ASSIGNED":
+    case "TASK_DUE_SOON":
+      return <CheckCircleIcon className={cls} />;
+    case "DM_RECEIVED":
+    case "TASK_COMMENTED":
+      return <ReplyIcon className={cls} />;
+    default:
+      return <BellIcon className={cls} />;
   }
 }
 
-function matchTab(item: InboxItem, tab: TabKey): boolean {
-  if (tab === "all") return true;
-  return item.kind === tab;
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
 }
 
 export function InboxList() {
   const [tab, setTab] = useState<TabKey>("all");
-  const items = INBOX_ITEMS.filter((i) => matchTab(i, tab));
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    getNotificationsApi(token)
+      .then(({ items }) => setNotifications(items))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleMarkRead(id: string) {
+    const token = getAccessToken();
+    if (!token) return;
+    await markAsReadApi(token, id).catch(console.error);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
+  }
+
+  const items = notifications.filter((n) => tabMatch(n, tab));
 
   return (
     <section
@@ -60,11 +104,7 @@ export function InboxList() {
     >
       <header className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
         <h2 className="text-sm font-semibold text-fg-primary">Inbox</h2>
-        <nav
-          role="tablist"
-          aria-label="인박스 필터"
-          className="flex items-center gap-1"
-        >
+        <nav role="tablist" aria-label="인박스 필터" className="flex items-center gap-1">
           {TABS.map((t) => {
             const isActive = t.key === tab;
             return (
@@ -88,74 +128,63 @@ export function InboxList() {
         </nav>
       </header>
 
-      {items.length === 0 ? (
+      {loading ? (
         <div className="px-4 py-10 text-center text-sm text-fg-tertiary">
-          해당 필터에 해당하는 항목이 없어요.
+          불러오는 중...
+        </div>
+      ) : items.length === 0 ? (
+        <div className="px-4 py-10 text-center text-sm text-fg-tertiary">
+          {tab === "all" ? "새 알림이 없어요." : "해당 필터에 해당하는 항목이 없어요."}
         </div>
       ) : (
         <ul className="divide-y divide-border-subtle">
-          {items.map((item) => (
-            <InboxRow key={item.id} item={item} />
+          {items.map((n) => (
+            <li
+              key={n.id}
+              onClick={() => !n.isRead && handleMarkRead(n.id)}
+              className={cn(
+                "flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated",
+                !n.isRead ? "bg-surface-subtle" : "bg-transparent",
+              )}
+            >
+              <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-fg-tertiary">
+                <NotifIcon type={n.type} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-xs text-fg-tertiary">
+                  <span className="font-medium text-fg-secondary">
+                    {TYPE_LABEL[n.type]}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <time className="shrink-0">{relativeTime(n.createdAt)}</time>
+                </div>
+                <p
+                  className={cn(
+                    "mt-1 text-sm",
+                    !n.isRead ? "text-fg-primary" : "text-fg-secondary",
+                  )}
+                >
+                  <span className="font-medium text-fg-primary">{n.title}</span>
+                  {n.body ? (
+                    <>
+                      <span className="text-fg-tertiary"> · </span>
+                      <span className="truncate">{n.body}</span>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+
+              {!n.isRead ? (
+                <span
+                  aria-label="읽지 않음"
+                  className="mt-2 size-2 shrink-0 rounded-full bg-accent"
+                />
+              ) : null}
+            </li>
           ))}
         </ul>
       )}
     </section>
-  );
-}
-
-function InboxRow({ item }: { item: InboxItem }) {
-  const author = getUser(item.authorId);
-  if (!author) return null;
-
-  return (
-    <li
-      className={cn(
-        "flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated",
-        item.isUnread ? "bg-surface-subtle" : "bg-transparent",
-      )}
-    >
-      <Avatar
-        initials={author.initials}
-        color={author.avatarColor}
-        size="sm"
-        presence={author.presence}
-        name={author.name}
-      />
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-xs text-fg-tertiary">
-          <KindIcon kind={item.kind} />
-          <span className="font-medium text-fg-secondary">
-            {KIND_LABEL[item.kind]}
-          </span>
-          <span aria-hidden="true">·</span>
-          <span className="truncate">{item.sourceLabel}</span>
-          <span aria-hidden="true">·</span>
-          <time className="shrink-0">{item.relativeTime}</time>
-        </div>
-        <p
-          className={cn(
-            "mt-1 truncate text-sm",
-            item.isUnread ? "text-fg-primary" : "text-fg-secondary",
-          )}
-        >
-          <span className="font-medium text-fg-primary">{author.name}</span>
-          <span className="text-fg-tertiary"> · </span>
-          {item.body}
-        </p>
-      </div>
-
-      {item.dueBadge ? (
-        <span className="shrink-0 rounded-md bg-priority-p1/15 px-2 py-0.5 text-[10px] font-semibold text-priority-p1">
-          {item.dueBadge}
-        </span>
-      ) : null}
-      {item.isUnread ? (
-        <span
-          aria-label="읽지 않음"
-          className="mt-2 size-2 shrink-0 rounded-full bg-accent"
-        />
-      ) : null}
-    </li>
   );
 }
