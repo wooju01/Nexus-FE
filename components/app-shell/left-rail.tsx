@@ -4,14 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
 
-import {
-  BoardIcon,
-  DocsIcon,
-  HomeIcon,
-  InboxIcon,
-  MessagesIcon,
-  PeopleIcon,
-} from "@/components/icons";
+import { HomeIcon, PeopleIcon } from "@/components/icons";
 import { cn } from "@/lib/utils/cn";
 
 type RailItem = {
@@ -29,14 +22,6 @@ const RAIL_ITEMS: ReadonlyArray<RailItem> = [
     icon: HomeIcon,
     activePrefix: "/dashboard",
   },
-  { label: "Inbox", icon: InboxIcon },
-  { label: "Messages", icon: MessagesIcon },
-  {
-    label: "Boards",
-    icon: BoardIcon,
-    activePrefix: "/projects",
-  },
-  { label: "Docs", icon: DocsIcon },
   {
     label: "친구",
     href: "/friends",

@@ -70,6 +70,13 @@ export async function declineFriendRequestApi(_token: string, requestId: string)
   return handleResponse<void>(res);
 }
 
+export async function cancelFriendRequestApi(_token: string, requestId: string): Promise<void> {
+  const res = await fetchWithAuth(`${API_URL}/friends/requests/${requestId}`, {
+    method: "DELETE",
+  });
+  return handleResponse<void>(res);
+}
+
 export async function getFriendsApi(_token: string): Promise<Friend[]> {
   const res = await fetchWithAuth(`${API_URL}/friends`);
   return handleResponse<Friend[]>(res);
