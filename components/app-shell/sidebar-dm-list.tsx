@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { XIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { type DmChannel } from "@/lib/api/dm";
 import { markChannelReadApi } from "@/lib/api/message";
@@ -28,9 +29,10 @@ type Props = {
   onMarkRead: (channelId: string) => void;
   onToggleStar: (item: StarredItem) => void;
   onDmStart: () => void;
+  onDmClose: (dmId: string) => void;
 };
 
-export function SidebarDmList({ wsId, pathname, dms, unreadCounts, onMarkRead, onToggleStar, onDmStart }: Props) {
+export function SidebarDmList({ wsId, pathname, dms, unreadCounts, onMarkRead, onToggleStar, onDmStart, onDmClose }: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   return (
@@ -75,6 +77,20 @@ export function SidebarDmList({ wsId, pathname, dms, unreadCounts, onMarkRead, o
                 {unread > 0 && hoveredId !== dm.id ? <UnreadBadge count={unread} /> : null}
                 {hoveredId === dm.id || isStarred(wsId, dm.id) ? (
                   <StarButton wsId={wsId} item={starItem} onToggle={onToggleStar} />
+                ) : null}
+                {hoveredId === dm.id ? (
+                  <button
+                    type="button"
+                    aria-label={`${other.name} DM 닫기`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onDmClose(dm.id);
+                    }}
+                    className="flex size-4 shrink-0 items-center justify-center rounded text-fg-tertiary hover:text-fg-primary"
+                  >
+                    <XIcon className="size-3" />
+                  </button>
                 ) : null}
               </Link>
             </li>
