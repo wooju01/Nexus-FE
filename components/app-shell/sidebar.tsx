@@ -32,6 +32,31 @@ import { SidebarChannelList } from "./sidebar-channel-list";
 import { SidebarProjectList } from "./sidebar-project-list";
 import { SidebarDmList } from "./sidebar-dm-list";
 
+function hiddenDmKey(userId: string) {
+  return `nexus:hidden-dms:${userId}`;
+}
+function loadHiddenDms(userId: string): Set<string> {
+  if (!userId || typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(hiddenDmKey(userId));
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+function saveHiddenDm(userId: string, dmId: string) {
+  if (!userId || typeof window === "undefined") return;
+  const set = loadHiddenDms(userId);
+  set.add(dmId);
+  localStorage.setItem(hiddenDmKey(userId), JSON.stringify([...set]));
+}
+function removeHiddenDm(userId: string, dmId: string) {
+  if (!userId || typeof window === "undefined") return;
+  const set = loadHiddenDms(userId);
+  set.delete(dmId);
+  localStorage.setItem(hiddenDmKey(userId), JSON.stringify([...set]));
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { currentWorkspace } = useWorkspace();
@@ -50,6 +75,7 @@ export function Sidebar() {
 
   const dmUserMap = useRef<Record<string, { name: string; status: string }>>({});
   const dmsRef = useRef<DmChannel[]>([]);
+  const hiddenDmIds = useRef<Set<string>>(new Set());
   useEffect(() => { dmsRef.current = dms; }, [dms]);
 
   useEffect(() => {
@@ -85,7 +111,14 @@ export function Sidebar() {
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    getProfileApi(token).then((p) => setCurrentUserId(p.id)).catch(console.error);
+    getProfileApi(token)
+      .then((p) => {
+        setCurrentUserId(p.id);
+        hiddenDmIds.current = loadHiddenDms(p.id);
+        // 이미 로드된 DM이 있다면 hidden 필터 재적용
+        setDms((prev) => prev.filter((d) => !hiddenDmIds.current.has(d.id)));
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -100,7 +133,7 @@ export function Sidebar() {
           const other = dm.members[0]?.user;
           if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
         });
-        setDms(list);
+        setDms(list.filter((dm) => !hiddenDmIds.current.has(dm.id)));
         // DM 채널 룸에 자동 join — 메시지 알림 수신용
         const socket = getSocket(token);
         list.forEach((dm) => socket.emit("channel.join", dm.id));
@@ -128,15 +161,20 @@ export function Sidebar() {
       if (msg.channelId === currentChannelId) return;
       setUnreadCounts((prev) => ({ ...prev, [msg.channelId]: (prev[msg.channelId] ?? 0) + 1 }));
 
-      // 모르는 채널이면 새 DM 도착 — DM 목록 즉시 갱신
+      // 모르는 채널이거나 hidden 상태면 새 DM 도착 — DM 목록 즉시 갱신
       const known = dmsRef.current.some((dm) => dm.id === msg.channelId);
-      if (!known) {
+      const wasHidden = hiddenDmIds.current.has(msg.channelId);
+      if (!known || wasHidden) {
+        if (wasHidden) {
+          hiddenDmIds.current.delete(msg.channelId);
+          removeHiddenDm(currentUserId, msg.channelId);
+        }
         getDmsApi(token!).then((list) => {
           list.forEach((dm) => {
             const other = dm.members[0]?.user;
             if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
           });
-          setDms(list);
+          setDms(list.filter((dm) => !hiddenDmIds.current.has(dm.id)));
           // 새로 생긴 DM 룸도 join
           const s = getSocket(token!);
           list.forEach((dm) => s.emit("channel.join", dm.id));
@@ -144,8 +182,28 @@ export function Sidebar() {
       }
     }
     socket.on("message.created", onMessageCreated);
-    return () => { socket.off("message.created", onMessageCreated); };
-  }, [currentWorkspace]);
+
+    function onDmCreated(e: Event) {
+      const dmId = (e as CustomEvent<{ dmId: string }>).detail.dmId;
+      hiddenDmIds.current.delete(dmId);
+      removeHiddenDm(currentUserId, dmId);
+      getDmsApi(token!).then((list) => {
+        list.forEach((dm) => {
+          const other = dm.members[0]?.user;
+          if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
+        });
+        setDms(list.filter((dm) => !hiddenDmIds.current.has(dm.id)));
+        const s = getSocket(token!);
+        list.forEach((dm) => s.emit("channel.join", dm.id));
+      }).catch(console.error);
+    }
+    window.addEventListener("nexus:dm-created", onDmCreated);
+
+    return () => {
+      socket.off("message.created", onMessageCreated);
+      window.removeEventListener("nexus:dm-created", onDmCreated);
+    };
+  }, [currentWorkspace, currentUserId]);
 
   function handleToggleStar(item: StarredItem) {
     setStarred(toggleStarred(wsId, item));
@@ -166,7 +224,9 @@ export function Sidebar() {
     if (!currentWorkspace) return;
     const token = getAccessToken();
     if (!token) return;
-    getDmsApi(token).then(setDms).catch(console.error);
+    getDmsApi(token)
+      .then((list) => setDms(list.filter((d) => !hiddenDmIds.current.has(d.id))))
+      .catch(console.error);
   }
 
   return (
@@ -240,6 +300,11 @@ export function Sidebar() {
           onMarkRead={handleMarkRead}
           onToggleStar={handleToggleStar}
           onDmStart={() => setIsDmModalOpen(true)}
+          onDmClose={(dmId) => {
+            hiddenDmIds.current.add(dmId);
+            saveHiddenDm(currentUserId, dmId);
+            setDms((prev) => prev.filter((d) => d.id !== dmId));
+          }}
         />
       </nav>
 

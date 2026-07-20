@@ -189,6 +189,11 @@ export function ProfileSettings() {
             <p className="mt-0.5 text-sm text-fg-tertiary">
               {profile?.email ?? "..."}
             </p>
+            {profile?.username ? (
+              <p className="mt-0.5 text-sm text-fg-tertiary">
+                <span className="text-fg-secondary">#{profile.username}</span>
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -250,7 +255,16 @@ export function ProfileSettings() {
               {usernameSaved ? "저장됨 ✓" : "저장"}
             </Button>
           </div>
-          <p className="text-xs text-fg-tertiary">소문자·숫자·점·언더스코어, 3~20자. 친구 추가 시 사용됩니다.</p>
+          <p className="text-xs text-fg-tertiary">
+            소문자·숫자·점·언더스코어, 3~20자. 친구 추가 시 사용됩니다.
+            {username ? (
+              <>
+                {" "}친구들은{" "}
+                <span className="font-medium text-fg-secondary">#{username}</span>
+                {" "}으로 나를 찾을 수 있어요.
+              </>
+            ) : null}
+          </p>
           <FieldError message={usernameError} />
         </div>
       </section>
