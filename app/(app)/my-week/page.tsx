@@ -101,8 +101,6 @@ export default function MyWeekPage() {
     const token = getAccessToken();
     if (!token) return;
 
-    setIsLoading(true);
-
     const tasksPromise = getProjectsApi(token, currentWorkspace.id)
       .then(async (projects) => {
         const allTasks = await Promise.all(

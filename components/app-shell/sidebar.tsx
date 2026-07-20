@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   CalendarIcon,
@@ -70,19 +70,20 @@ export function Sidebar() {
   const [dms, setDms] = useState<DmChannel[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-  const [starred, setStarred] = useState<StarredItem[]>([]);
-  const [recent, setRecent] = useState<RecentItem[]>([]);
 
-  const dmUserMap = useRef<Record<string, { name: string; status: string }>>({});
+  // starred/recent는 localStorage에서 읽는 파생값 — 버전 카운터로 재계산 트리거
+  const [starVersion, setStarVersion] = useState(0);
+  const [recentVersion, setRecentVersion] = useState(0);
+  const starred = useMemo(() => { void starVersion; return getStarred(wsId); }, [wsId, starVersion]);
+  const recent = useMemo(() => { void recentVersion; return getRecent(wsId); }, [wsId, recentVersion]);
+
+  // dmUserMap: 렌더에 전달되므로 useState, effect 내부 읽기는 ref로 스냅샷
+  const [dmUserMap, setDmUserMap] = useState<Record<string, { name: string; status: string }>>({});
+  const dmUserMapRef = useRef<Record<string, { name: string; status: string }>>({});
   const dmsRef = useRef<DmChannel[]>([]);
   const hiddenDmIds = useRef<Set<string>>(new Set());
   useEffect(() => { dmsRef.current = dms; }, [dms]);
-
-  useEffect(() => {
-    if (!wsId) return;
-    setStarred(getStarred(wsId));
-    setRecent(getRecent(wsId));
-  }, [wsId]);
+  useEffect(() => { dmUserMapRef.current = dmUserMap; }, [dmUserMap]);
 
   useEffect(() => {
     if (!wsId) return;
@@ -94,7 +95,7 @@ export function Sidebar() {
 
     if (channelMatch) {
       id = channelMatch[1];
-      const dmInfo = dmUserMap.current[id];
+      const dmInfo = dmUserMapRef.current[id];
       if (dmInfo) { type = "dm"; name = dmInfo.name; }
       else { type = "channel"; name = channels.find((c) => c.id === id)?.name ?? ""; }
     } else if (projectMatch) {
@@ -104,7 +105,8 @@ export function Sidebar() {
     }
 
     if (type && id && name) {
-      setRecent(recordVisit(wsId, { id, type, name, href: pathname }));
+      recordVisit(wsId, { id, type, name, href: pathname });
+      setRecentVersion((n) => n + 1);
     }
   }, [pathname, wsId, channels, projects]);
 
@@ -129,12 +131,13 @@ export function Sidebar() {
     getChannelsApi(token, currentWorkspace.id).then(setChannels).catch(console.error);
     getDmsApi(token)
       .then((list) => {
+        const newMap: Record<string, { name: string; status: string }> = {};
         list.forEach((dm) => {
           const other = dm.members[0]?.user;
-          if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
+          if (other) newMap[dm.id] = { name: other.name, status: other.status };
         });
+        setDmUserMap((prev) => ({ ...prev, ...newMap }));
         setDms(list.filter((dm) => !hiddenDmIds.current.has(dm.id)));
-        // DM 채널 룸에 자동 join — 메시지 알림 수신용
         const socket = getSocket(token);
         list.forEach((dm) => socket.emit("channel.join", dm.id));
       })
@@ -170,10 +173,12 @@ export function Sidebar() {
           removeHiddenDm(currentUserId, msg.channelId);
         }
         getDmsApi(token!).then((list) => {
+          const newMap: Record<string, { name: string; status: string }> = {};
           list.forEach((dm) => {
             const other = dm.members[0]?.user;
-            if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
+            if (other) newMap[dm.id] = { name: other.name, status: other.status };
           });
+          setDmUserMap((prev) => ({ ...prev, ...newMap }));
           setDms(list.filter((dm) => !hiddenDmIds.current.has(dm.id)));
           // 새로 생긴 DM 룸도 join
           const s = getSocket(token!);
@@ -188,10 +193,12 @@ export function Sidebar() {
       hiddenDmIds.current.delete(dmId);
       removeHiddenDm(currentUserId, dmId);
       getDmsApi(token!).then((list) => {
+        const newMap: Record<string, { name: string; status: string }> = {};
         list.forEach((dm) => {
           const other = dm.members[0]?.user;
-          if (other) dmUserMap.current[dm.id] = { name: other.name, status: other.status };
+          if (other) newMap[dm.id] = { name: other.name, status: other.status };
         });
+        setDmUserMap((prev) => ({ ...prev, ...newMap }));
         setDms(list.filter((dm) => !hiddenDmIds.current.has(dm.id)));
         const s = getSocket(token!);
         list.forEach((dm) => s.emit("channel.join", dm.id));
@@ -206,7 +213,8 @@ export function Sidebar() {
   }, [currentWorkspace, currentUserId]);
 
   function handleToggleStar(item: StarredItem) {
-    setStarred(toggleStarred(wsId, item));
+    toggleStarred(wsId, item);
+    setStarVersion((n) => n + 1);
   }
 
   function handleMarkRead(channelId: string) {
@@ -224,9 +232,15 @@ export function Sidebar() {
     if (!currentWorkspace) return;
     const token = getAccessToken();
     if (!token) return;
-    getDmsApi(token)
-      .then((list) => setDms(list.filter((d) => !hiddenDmIds.current.has(d.id))))
-      .catch(console.error);
+    getDmsApi(token).then((list) => {
+      const newMap: Record<string, { name: string; status: string }> = {};
+      list.forEach((dm) => {
+        const other = dm.members[0]?.user;
+        if (other) newMap[dm.id] = { name: other.name, status: other.status };
+      });
+      setDmUserMap((prev) => ({ ...prev, ...newMap }));
+      setDms(list.filter((d) => !hiddenDmIds.current.has(d.id)));
+    }).catch(console.error);
   }
 
   return (
@@ -262,7 +276,7 @@ export function Sidebar() {
           wsId={wsId}
           pathname={pathname}
           starred={starred}
-          dmUserMap={dmUserMap.current}
+          dmUserMap={dmUserMap}
           onToggleStar={handleToggleStar}
         />
 
@@ -270,7 +284,7 @@ export function Sidebar() {
           wsId={wsId}
           pathname={pathname}
           recent={recent}
-          dmUserMap={dmUserMap.current}
+          dmUserMap={dmUserMap}
           onToggleStar={handleToggleStar}
         />
 
@@ -289,7 +303,7 @@ export function Sidebar() {
           projects={projects}
           onProjectsChange={setProjects}
           onChannelsChange={refreshChannels}
-          onRecentChange={setRecent}
+          onRecentChange={() => setRecentVersion((n) => n + 1)}
         />
 
         <SidebarDmList

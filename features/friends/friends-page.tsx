@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -36,7 +36,7 @@ export function FriendsPage() {
   const [addSuccess, setAddSuccess] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  const load = useCallback(async () => {
+  async function load() {
     const [f, r, s] = await Promise.all([
       getFriendsApi(""),
       getReceivedRequestsApi(""),
@@ -45,9 +45,12 @@ export function FriendsPage() {
     setFriends(f);
     setRequests(r);
     setSentRequests(s);
-  }, []);
+  }
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    Promise.all([getFriendsApi(""), getReceivedRequestsApi(""), getSentRequestsApi("")])
+      .then(([f, r, s]) => { setFriends(f); setRequests(r); setSentRequests(s); });
+  }, []);
 
   const handleAccept = async (requestId: string) => {
     await acceptFriendRequestApi("", requestId);

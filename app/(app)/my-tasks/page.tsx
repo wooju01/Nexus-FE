@@ -52,8 +52,6 @@ export default function MyTasksPage() {
     const token = getAccessToken();
     if (!token) return;
 
-    setIsLoading(true);
-
     getProjectsApi(token, currentWorkspace.id)
       .then(async (projects) => {
         const allTasks = await Promise.all(

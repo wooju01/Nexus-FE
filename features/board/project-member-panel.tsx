@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils/cn";
 import { getAccessToken } from "@/lib/auth/tokens";
@@ -90,28 +90,14 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const fetchData = useCallback(async () => {
+  useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [pm, wm] = await Promise.all([
-        getProjectMembersApi(token, projectId),
-        getMembersApi(token, workspaceId),
-      ]);
-      setMembers(pm);
-      setWsMembers(wm);
-    } catch {
-      setError("멤버 목록을 불러오지 못했습니다.");
-    } finally {
-      setIsLoading(false);
-    }
+    Promise.all([getProjectMembersApi(token, projectId), getMembersApi(token, workspaceId)])
+      .then(([pm, wm]) => { setMembers(pm); setWsMembers(wm); })
+      .catch(() => setError("멤버 목록을 불러오지 못했습니다."))
+      .finally(() => setIsLoading(false));
   }, [projectId, workspaceId]);
-
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
 
   // 이미 프로젝트에 추가된 userId Set
   const memberIds = new Set(members.map((m) => m.user.id));
