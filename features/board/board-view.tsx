@@ -288,11 +288,9 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
   const boardPath = project ? `/projects/${project.id}` : "";
 
   // selectedTaskId가 바뀌면 상세 태스크를 API로 가져옴
+  // selectedTaskId가 없으면 effect를 종료 — selectedTask는 아래 파생값으로 null 처리
   useEffect(() => {
-    if (!selectedTaskId) {
-      setSelectedTask(null);
-      return;
-    }
+    if (!selectedTaskId) return;
     const token = getAccessToken();
     if (!token) return;
     let cancelled = false;
@@ -315,22 +313,12 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
     if (boardPath) router.push(boardPath);
   }
 
-  const fetchTasks = useCallback(async () => {
+  useEffect(() => {
     if (!project) return;
     const token = getAccessToken();
     if (!token) return;
-    try {
-      const data = await getTasksApi(token, project.id);
-      setTasks(data);
-    } catch {
-      // 오류 시 빈 목록 유지
-    }
+    getTasksApi(token, project.id).then(setTasks).catch(() => {});
   }, [project]);
-
-  useEffect(() => {
-    setTasks([]);
-    void fetchTasks();
-  }, [fetchTasks]);
 
   // 실시간 동기화: 같은 프로젝트 보드를 보는 다른 사용자의 변경을 즉시 반영.
   // 자기 자신의 변경은 PATCH 응답 또는 낙관적 업데이트로 이미 적용되어 있고,

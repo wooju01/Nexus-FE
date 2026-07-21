@@ -8,7 +8,6 @@ import {
   BellIcon,
   CalendarIcon,
   ChevronDownIcon,
-  SearchIcon,
   SparklesIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
@@ -222,21 +221,7 @@ export function TopBar() {
         ) : null}
       </div>
 
-      <div className="flex flex-1 justify-center">
-        <div className="relative flex w-full max-w-xl items-center opacity-40 cursor-not-allowed">
-          <SearchIcon className="pointer-events-none absolute left-3 size-4 text-fg-tertiary" />
-          <input
-            type="search"
-            placeholder="Search or jump to..."
-            aria-label="검색 (준비 중)"
-            disabled
-            className="h-9 w-full rounded-lg border border-border-subtle bg-surface-elevated pl-9 pr-16 text-sm text-fg-primary placeholder:text-fg-tertiary outline-none cursor-not-allowed"
-          />
-          <kbd className="pointer-events-none absolute right-2 flex items-center gap-0.5 rounded border border-border-subtle bg-surface-overlay px-1.5 py-0.5 text-[10px] text-fg-tertiary">
-            ⌘ K
-          </kbd>
-        </div>
-      </div>
+      <div className="flex flex-1" />
 
       <div className="flex items-center gap-1">
         <button

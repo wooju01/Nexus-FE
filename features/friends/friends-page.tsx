@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   getFriendsApi,
@@ -13,6 +14,7 @@ import {
   removeFriendApi,
 } from "@/lib/api/friends";
 import type { Friend, FriendRequest } from "@/lib/api/friends";
+import { createDmApi } from "@/lib/api/dm";
 
 type Tab = "online" | "all" | "requests" | "add";
 
@@ -24,6 +26,7 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 export function FriendsPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("online");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
@@ -33,7 +36,7 @@ export function FriendsPage() {
   const [addSuccess, setAddSuccess] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  const load = useCallback(async () => {
+  async function load() {
     const [f, r, s] = await Promise.all([
       getFriendsApi(""),
       getReceivedRequestsApi(""),
@@ -42,9 +45,12 @@ export function FriendsPage() {
     setFriends(f);
     setRequests(r);
     setSentRequests(s);
-  }, []);
+  }
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    Promise.all([getFriendsApi(""), getReceivedRequestsApi(""), getSentRequestsApi("")])
+      .then(([f, r, s]) => { setFriends(f); setRequests(r); setSentRequests(s); });
+  }, []);
 
   const handleAccept = async (requestId: string) => {
     await acceptFriendRequestApi("", requestId);
@@ -64,6 +70,12 @@ export function FriendsPage() {
   const handleRemove = async (friendUserId: string) => {
     await removeFriendApi("", friendUserId);
     load();
+  };
+
+  const handleDmStart = async (targetUserId: string) => {
+    const { id } = await createDmApi("", targetUserId);
+    window.dispatchEvent(new CustomEvent("nexus:dm-created", { detail: { dmId: id } }));
+    router.push(`/channels/${id}`);
   };
 
   const handleSendRequest = async () => {
@@ -264,7 +276,11 @@ export function FriendsPage() {
               </p>
             ) : null}
             {displayedFriends.map(({ friendRequestId, user }) => (
-              <div key={friendRequestId} className="group flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-surface-elevated">
+              <div
+                key={friendRequestId}
+                onClick={() => handleDmStart(user.id)}
+                className="group flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-surface-elevated"
+              >
                 <div className="relative size-9 shrink-0 rounded-full bg-surface-overlay">
                   {user.avatar ? (
                     <img src={user.avatar} alt="" className="size-full rounded-full object-cover" />
@@ -283,7 +299,7 @@ export function FriendsPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleRemove(user.id)}
+                  onClick={(e) => { e.stopPropagation(); handleRemove(user.id); }}
                   className="invisible rounded-full p-1.5 text-fg-tertiary hover:bg-red-600/20 hover:text-red-400 transition-colors group-hover:visible"
                   title="친구 삭제"
                 >

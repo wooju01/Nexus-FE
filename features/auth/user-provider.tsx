@@ -26,15 +26,13 @@ export function useUser() {
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // 토큰이 없으면 프로필 요청 자체가 없으므로 처음부터 false
+  const [isLoading, setIsLoading] = useState(() => !!getAccessToken());
   const router = useRouter();
 
   const fetchProfile = useCallback(() => {
     const token = getAccessToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
+    if (!token) return; // 동기 setIsLoading 제거 — 초기값으로 이미 처리됨
     getProfileApi(token)
       .then(setUser)
       .catch(() => setUser(null))

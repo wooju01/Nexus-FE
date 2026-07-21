@@ -32,14 +32,12 @@ export function useWorkspace() {
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // 토큰이 없으면 로딩할 내용이 없으므로 false로 초기화
+  const [isLoading, setIsLoading] = useState(() => !!getAccessToken());
 
   useEffect(() => {
     const token = getAccessToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
+    if (!token) return;
     getWorkspacesApi(token)
       .then((list) => {
         setWorkspaces(list);

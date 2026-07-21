@@ -1,6 +1,6 @@
 import { BoardIcon, HashIcon, StarIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
-import { isStarred, toggleStarred, type StarredItem } from "@/lib/store/starred";
+import { isStarred, type StarredItem } from "@/lib/store/starred";
 import { cn } from "@/lib/utils/cn";
 
 const STATUS_PRESENCE = {
