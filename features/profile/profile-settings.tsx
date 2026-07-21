@@ -124,6 +124,7 @@ export function ProfileSettings() {
     try {
       await updatePresenceApi(token, status);
       setPresence(status);
+      refreshUser?.();
     } catch {
       // 상태 변경 실패 시 이전 값 유지
     } finally {
