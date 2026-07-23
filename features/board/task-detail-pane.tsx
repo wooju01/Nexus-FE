@@ -15,9 +15,11 @@ import {
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 
 import { EditableTitle } from "./editable-title";
-import { PaneIconButton } from "./task-detail-atoms";
+import { PaneIconButton, TabButton } from "./task-detail-atoms";
 import { TaskConversation } from "./task-conversation";
 import { TaskProperties } from "./task-properties";
+
+type Tab = "conversation" | "description" | "subtasks";
 
 type TaskDetailPaneProps = {
   task: Task;
@@ -29,6 +31,7 @@ type TaskDetailPaneProps = {
 export function TaskDetailPane({ task, closeHref, onTaskUpdated, onTaskDeleted }: TaskDetailPaneProps) {
   const [localTask, setLocalTask] = useState<Task>(task);
   const [deleting, setDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("conversation");
 
   // 임의 필드 변경 → PATCH 요청 후 로컬 상태 + 보드 동기화
   async function handleUpdate(patch: UpdateTaskPayload) {
@@ -99,19 +102,53 @@ export function TaskDetailPane({ task, closeHref, onTaskUpdated, onTaskDeleted }
         {/* 속성 그리드 (Status / Priority / Assignees / Due) */}
         <TaskProperties task={localTask} onUpdate={handleUpdate} />
 
-        {/* 설명 — Tiptap 인라인 편집 (blur 시 저장) */}
-        <section className="px-5 py-4">
-          <TiptapEditor
-            // task.id 가 바뀌면 에디터를 새로 마운트해 새 task 의 description 으로 초기화
-            key={localTask.id}
-            value={(localTask.description ?? null) as never}
-            placeholder="설명을 작성해 주세요…"
-            onBlur={(json) => handleUpdate({ description: json })}
-          />
-        </section>
+        {/* 탭 바 */}
+        <nav
+          role="tablist"
+          aria-label="상세 탭"
+          className="flex items-center gap-4 border-b border-border-subtle px-5"
+        >
+          <TabButton
+            active={activeTab === "conversation"}
+            onClick={() => setActiveTab("conversation")}
+          >
+            Conversation
+          </TabButton>
+          <TabButton
+            active={activeTab === "description"}
+            onClick={() => setActiveTab("description")}
+          >
+            Description
+          </TabButton>
+          <TabButton
+            active={activeTab === "subtasks"}
+            onClick={() => setActiveTab("subtasks")}
+          >
+            Sub-tasks
+          </TabButton>
+        </nav>
 
-        {/* 코멘트 (탭 바 + 작성 입력) */}
-        <TaskConversation taskId={localTask.id} />
+        {/* 탭 콘텐츠 */}
+        {activeTab === "conversation" && (
+          <TaskConversation taskId={localTask.id} />
+        )}
+
+        {activeTab === "description" && (
+          <section className="px-5 py-4">
+            <TiptapEditor
+              key={localTask.id}
+              value={(localTask.description ?? null) as never}
+              placeholder="설명을 작성해 주세요…"
+              onBlur={(json) => handleUpdate({ description: json })}
+            />
+          </section>
+        )}
+
+        {activeTab === "subtasks" && (
+          <div className="px-5 py-8 text-center text-sm text-fg-tertiary">
+            하위 태스크 — 준비 중
+          </div>
+        )}
       </div>
     </aside>
   );

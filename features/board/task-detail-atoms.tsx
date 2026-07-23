@@ -27,14 +27,16 @@ export function Row({ label, children }: RowProps) {
 type TabButtonProps = {
   children: React.ReactNode;
   active?: boolean;
+  onClick?: () => void;
 };
 
-export function TabButton({ children, active }: TabButtonProps) {
+export function TabButton({ children, active, onClick }: TabButtonProps) {
   return (
     <button
       type="button"
       role="tab"
       aria-selected={active ? "true" : "false"}
+      onClick={onClick}
       className={cn(
         "relative py-2.5 text-sm transition-colors",
         active
