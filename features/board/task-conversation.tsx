@@ -18,8 +18,6 @@ import {
 import { getAccessToken } from "@/lib/auth/tokens";
 import { getSocket } from "@/lib/ws/socket";
 
-import { TabButton } from "./task-detail-atoms";
-
 /** Tiptap JSON 이 비어있는지 (빈 단락만 있는지) 검사. */
 function isEmptyJson(value: JSONContent | null): boolean {
   if (!value) return true;
@@ -126,20 +124,6 @@ export function TaskConversation({ taskId }: TaskConversationProps) {
 
   return (
     <>
-      <nav
-        role="tablist"
-        aria-label="상세 탭"
-        className="flex items-center gap-4 border-b border-border-subtle px-5"
-      >
-        <TabButton active>
-          Conversation
-          <span className="ml-1.5 text-xs text-fg-tertiary">{comments.length}</span>
-        </TabButton>
-        <TabButton>Description</TabButton>
-        <TabButton>Sub-tasks</TabButton>
-        <TabButton>Activity</TabButton>
-      </nav>
-
       <ul className="space-y-4 px-5 py-4">
         {comments.length === 0 ? (
           <li className="text-center text-xs text-fg-tertiary">

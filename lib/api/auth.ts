@@ -5,16 +5,32 @@ type AuthTokens = {
   refreshToken: string;
 };
 
-// NestJS가 실패 시 반환하는 형태
 type ApiError = {
-  message: string;
+  message: string | string[];
   statusCode: number;
 };
 
+const STATUS_FALLBACKS: Partial<Record<number, string>> = {
+  409: "이미 사용 중인 이메일 또는 아이디입니다.",
+  401: "인증이 필요합니다.",
+  403: "접근 권한이 없습니다.",
+};
+
+const GENERIC_BE_MESSAGES = new Set(["Conflict", "Unauthorized", "Forbidden", "Not Found", "Bad Request"]);
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
-  const err: ApiError = await res.json();
-  throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
+  try {
+    const err: ApiError = await res.json();
+    const raw = Array.isArray(err.message) ? err.message[0] : err.message;
+    const msg = !raw || GENERIC_BE_MESSAGES.has(raw)
+      ? (STATUS_FALLBACKS[res.status] ?? raw ?? "알 수 없는 오류가 발생했습니다.")
+      : raw;
+    throw new Error(msg);
+  } catch (e) {
+    if (e instanceof Error) throw e;
+    throw new Error(STATUS_FALLBACKS[res.status] ?? "알 수 없는 오류가 발생했습니다.");
+  }
 }
 
 /** POST /auth/login */

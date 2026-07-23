@@ -74,11 +74,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 포커스 링 — 접근성 유지 */
-*:focus-visible {
+/* 포커스 링 — 접근성 유지. ProseMirror는 부모 컨테이너의 focus-within 링으로 표시되므로 제외. */
+*:focus-visible:not(.ProseMirror) {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+.ProseMirror:focus-visible {
+  outline: none;
 }
 
 /* 선택 영역 */
