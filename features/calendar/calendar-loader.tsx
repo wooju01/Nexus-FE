@@ -87,9 +87,9 @@ export function CalendarLoader({
 
         // 3) 선택된 이벤트는 별도 endpoint 로 (만료/삭제된 id 시 null).
         const [list, picked] = await Promise.all([
-          listCalendarEvents(accessToken, { workspaceId: wsId, from, to }),
+          listCalendarEvents({ workspaceId: wsId, from, to }),
           selectedEventId
-            ? getCalendarEventById(accessToken, wsId, selectedEventId)
+            ? getCalendarEventById(wsId, selectedEventId)
             : Promise.resolve(null),
         ]);
 
@@ -139,7 +139,7 @@ export function CalendarLoader({
     if (!accessToken || !workspaceId) {
       throw new Error("인증 정보가 없습니다.");
     }
-    await deleteCalendarEvent(accessToken, workspaceId, event.id);
+    await deleteCalendarEvent(workspaceId, event.id);
     setEvents((prev) => prev.filter((e) => e.id !== event.id));
     if (selectedEvent?.id === event.id) {
       setSelectedEvent(undefined);

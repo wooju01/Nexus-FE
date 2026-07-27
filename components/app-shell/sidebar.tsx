@@ -23,6 +23,7 @@ import { getSocket } from "@/lib/ws/socket";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
 import { InviteModal } from "@/features/invitation/invite-modal";
 import { DmStartModal } from "@/features/dm/dm-start-modal";
+import { CreateWorkspaceModal } from "@/features/workspace/create-workspace-modal";
 import { toggleStarred, getStarred, type StarredItem } from "@/lib/store/starred";
 import { getRecent, recordVisit, type RecentItem } from "@/lib/store/recent";
 import { SidebarLink } from "./sidebar-nav";
@@ -64,6 +65,7 @@ export function Sidebar() {
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isDmModalOpen, setIsDmModalOpen] = useState(false);
+  const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
 
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -142,7 +144,7 @@ export function Sidebar() {
         list.forEach((dm) => socket.emit("channel.join", dm.id));
       })
       .catch(console.error);
-    getProjectsApi(token, currentWorkspace.id).then(setProjects).catch(console.error);
+    getProjectsApi(currentWorkspace.id).then(setProjects).catch(console.error);
   }, [currentWorkspace]);
 
   useEffect(() => {
@@ -251,6 +253,7 @@ export function Sidebar() {
       <div className="px-3 pb-2 pt-3">
         <button
           type="button"
+          onClick={() => setIsCreateWorkspaceOpen(true)}
           className="flex w-full items-center justify-between rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm font-medium text-fg-secondary hover:border-border-strong hover:text-fg-primary"
         >
           <span className="flex items-center gap-2">
@@ -333,6 +336,7 @@ export function Sidebar() {
         </button>
       </div>
 
+      <CreateWorkspaceModal isOpen={isCreateWorkspaceOpen} onClose={() => setIsCreateWorkspaceOpen(false)} />
       {currentWorkspace ? (
         <>
           <InviteModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} workspaceId={currentWorkspace.id} />

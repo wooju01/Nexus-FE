@@ -52,7 +52,7 @@ export function NotificationPanel({
     if (!n.isRead) {
       const token = getAccessToken();
       if (token) {
-        await markAsReadApi(token, n.id).catch(console.error);
+        await markAsReadApi(n.id).catch(console.error);
         onRead(n.id);
       }
     }
@@ -65,7 +65,7 @@ export function NotificationPanel({
   async function handleReadAll() {
     const token = getAccessToken();
     if (token) {
-      await markAllAsReadApi(token).catch(console.error);
+      await markAllAsReadApi().catch(console.error);
       onReadAll();
     }
   }

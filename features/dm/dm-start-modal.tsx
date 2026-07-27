@@ -40,7 +40,7 @@ export function DmStartModal({
     if (!isOpen) return;
     const token = getAccessToken();
     if (!token) return;
-    getMembersApi(token, workspaceId)
+    getMembersApi(workspaceId)
       .then((ms) => { setMembers(ms); setQuery(""); })
       .catch(console.error);
   }, [isOpen, workspaceId]);

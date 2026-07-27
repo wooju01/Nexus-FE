@@ -46,10 +46,10 @@ export function KpiCards() {
     const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
     Promise.all([
-      countUnreadApi(token),
+      countUnreadApi(),
       getMyTasksApi(token),
       getUnreadSummaryApi(token, currentWorkspace.id),
-      getMembersApi(token, currentWorkspace.id),
+      getMembersApi(currentWorkspace.id),
     ])
       .then(([{ count }, tasks, unreadSummary, members]) => {
         const dueToday = tasks.filter(

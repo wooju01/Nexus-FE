@@ -93,7 +93,7 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    Promise.all([getProjectMembersApi(token, projectId), getMembersApi(token, workspaceId)])
+    Promise.all([getProjectMembersApi(projectId), getMembersApi(workspaceId)])
       .then(([pm, wm]) => { setMembers(pm); setWsMembers(wm); })
       .catch(() => setError("멤버 목록을 불러오지 못했습니다."))
       .finally(() => setIsLoading(false));
@@ -111,7 +111,7 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
     setIsAdding(true);
     setError(null);
     try {
-      const newMember = await addProjectMemberApi(token, projectId, { userId });
+      const newMember = await addProjectMemberApi(projectId, { userId });
       setMembers((prev) => [...prev, newMember]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "초대에 실패했습니다.");
@@ -126,7 +126,7 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
     setRemovingId(targetUserId);
     setError(null);
     try {
-      await removeProjectMemberApi(token, projectId, targetUserId);
+      await removeProjectMemberApi(projectId, targetUserId);
       setMembers((prev) => prev.filter((m) => m.user.id !== targetUserId));
     } catch (err) {
       setError(err instanceof Error ? err.message : "멤버 제거에 실패했습니다.");
@@ -141,7 +141,7 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
     setUpdatingId(targetUserId);
     setError(null);
     try {
-      const updated = await updateProjectMemberApi(token, projectId, targetUserId, newRole);
+      const updated = await updateProjectMemberApi(projectId, targetUserId, newRole);
       setMembers((prev) => prev.map((m) => (m.user.id === targetUserId ? updated : m)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "역할 변경에 실패했습니다.");

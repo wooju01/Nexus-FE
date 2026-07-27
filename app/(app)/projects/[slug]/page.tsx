@@ -26,7 +26,7 @@ export default function ProjectBoardPage({
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    getProjectApi(token, projectId)
+    getProjectApi(projectId)
       .then(setProject)
       .catch(() => setIsNotFound(true));
   }, [projectId]);

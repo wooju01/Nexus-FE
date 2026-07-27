@@ -42,6 +42,11 @@ export function ProfileSettings() {
   const [nameSaving, setNameSaving] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
 
+  // 직무 편집
+  const [jobTitle, setJobTitle] = useState("");
+  const [jobTitleSaving, setJobTitleSaving] = useState(false);
+  const [jobTitleSaved, setJobTitleSaved] = useState(false);
+
   // username 편집
   const [username, setUsername] = useState("");
   const [usernameError, setUsernameError] = useState("");
@@ -67,6 +72,7 @@ export function ProfileSettings() {
       .then((p) => {
         setProfile(p);
         setName(p.name);
+        setJobTitle(p.jobTitle ?? "");
         setUsername(p.username ?? "");
         setPresence(p.status);
       })
@@ -92,6 +98,22 @@ export function ProfileSettings() {
       setNameError(e instanceof Error ? e.message : "저장 실패");
     } finally {
       setNameSaving(false);
+    }
+  }
+
+  async function handleSaveJobTitle() {
+    const token = getAccessToken();
+    if (!token) return;
+    setJobTitleSaving(true);
+    try {
+      const updated = await updateProfileApi(token, { jobTitle: jobTitle.trim() || undefined });
+      setProfile(updated);
+      setJobTitleSaved(true);
+      setTimeout(() => setJobTitleSaved(false), 2000);
+    } catch {
+      // 실패 시 조용히 무시
+    } finally {
+      setJobTitleSaving(false);
     }
   }
 
@@ -190,6 +212,9 @@ export function ProfileSettings() {
             <p className="mt-0.5 text-sm text-fg-tertiary">
               {profile?.email ?? "..."}
             </p>
+            {profile?.jobTitle ? (
+              <p className="mt-0.5 text-sm text-fg-secondary">{profile.jobTitle}</p>
+            ) : null}
             {profile?.username ? (
               <p className="mt-0.5 text-sm text-fg-tertiary">
                 <span className="text-fg-secondary">#{profile.username}</span>
@@ -226,6 +251,29 @@ export function ProfileSettings() {
             </Button>
           </div>
           <FieldError message={nameError} />
+        </div>
+
+        <div className="mt-5 space-y-1">
+          <Label htmlFor="profile-job-title">직무</Label>
+          <div className="flex gap-2">
+            <Input
+              id="profile-job-title"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void handleSaveJobTitle(); }}
+              placeholder="예: 개발자, 디자이너, PM"
+              className="flex-1"
+            />
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => void handleSaveJobTitle()}
+              isLoading={jobTitleSaving}
+              disabled={jobTitleSaving || jobTitle.trim() === (profile?.jobTitle ?? "")}
+            >
+              {jobTitleSaved ? "저장됨 ✓" : "저장"}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-5 space-y-1">

@@ -53,7 +53,7 @@ export default function InboxPage() {
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    getNotificationsApi(token)
+    getNotificationsApi()
       .then((data) => setNotifications(data.items))
       .catch(console.error)
       .finally(() => setIsLoading(false));
@@ -62,7 +62,7 @@ export default function InboxPage() {
   async function handleClick(n: Notification) {
     if (!n.isRead) {
       const token = getAccessToken();
-      if (token) await markAsReadApi(token, n.id).catch(console.error);
+      if (token) await markAsReadApi(n.id).catch(console.error);
       setNotifications((prev) =>
         prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
       );
@@ -72,7 +72,7 @@ export default function InboxPage() {
 
   async function handleReadAll() {
     const token = getAccessToken();
-    if (token) await markAllAsReadApi(token).catch(console.error);
+    if (token) await markAllAsReadApi().catch(console.error);
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   }
 

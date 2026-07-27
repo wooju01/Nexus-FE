@@ -19,10 +19,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
     if (res.status === 204) return undefined as unknown as T;
     return res.json() as Promise<T>;
   }
-  const err = await res.json().catch(() => ({}));
-  throw new Error(
-    (err as { message?: string }).message ?? "알 수 없는 오류가 발생했습니다.",
-  );
+  const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+  throw new Error(body.error?.message ?? "알 수 없는 오류가 발생했습니다.");
 }
 
 export type TaskCommentAuthor = {

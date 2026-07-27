@@ -23,8 +23,8 @@ export async function uploadFileApi(file: File): Promise<UploadResult> {
   });
 
   if (!res.ok) {
-    const err = (await res.json()) as { message?: string };
-    throw new Error(err.message ?? "업로드에 실패했습니다.");
+    const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new Error(body.error?.message ?? "업로드에 실패했습니다.");
   }
 
   return res.json() as Promise<UploadResult>;

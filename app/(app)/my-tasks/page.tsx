@@ -52,7 +52,7 @@ export default function MyTasksPage() {
     const token = getAccessToken();
     if (!token) return;
 
-    getProjectsApi(token, currentWorkspace.id)
+    getProjectsApi(currentWorkspace.id)
       .then(async (projects) => {
         const allTasks = await Promise.all(
           projects.map((p) =>

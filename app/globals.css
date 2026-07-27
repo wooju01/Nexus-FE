@@ -85,6 +85,12 @@ body {
   outline: none;
 }
 
+/* select 드롭다운 option — OS 기본값은 흰 배경이라 다크 테마에서 안 보임 */
+option {
+  background-color: var(--color-surface-elevated);
+  color: var(--color-fg-primary);
+}
+
 /* 선택 영역 */
 ::selection {
   background: var(--color-accent-subtle);

@@ -40,7 +40,7 @@ export function SidebarProjectList({ wsId, pathname, projects, onProjectsChange,
     setIsDeleting(true);
     try {
       const token = getAccessToken();
-      if (token) await deleteProjectApi(token, confirmDeleteId);
+      if (token) await deleteProjectApi(confirmDeleteId);
       const deletedProject = projects.find((p) => p.id === confirmDeleteId);
       onProjectsChange(projects.filter((p) => p.id !== confirmDeleteId));
       // 프로젝트 + 연동 채널 모두 recent에서 제거

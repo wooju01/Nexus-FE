@@ -55,7 +55,7 @@ export function ParticipantsSelector({
       }
 
       try {
-        const list = await getMembersApi(accessToken, workspaceId);
+        const list = await getMembersApi(workspaceId);
         if (cancelled) return;
         setMembers(list);
         setLoadState("ready");

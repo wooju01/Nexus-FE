@@ -46,7 +46,7 @@ export function LabelPicker({ task, onChange }: LabelPickerProps) {
     if (!isOpen || loaded || !workspaceId) return;
     const token = getAccessToken();
     if (!token) return;
-    getLabelsApi(token, workspaceId)
+    getLabelsApi(workspaceId)
       .then((l) => {
         setLabels(l);
         setLoaded(true);

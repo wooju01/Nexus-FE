@@ -19,10 +19,18 @@ import type { Invitation, WorkspaceRole } from "@/types/invitation";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
-// NestJS 글로벌 ExceptionFilter 가 반환하는 형태와 호환.
-type ApiError = {
-  message: string;
-  statusCode?: number;
+// HttpExceptionFilter 의 실제 응답 형태: { error: { code, message } }
+type ApiErrorBody = {
+  error?: { code?: string; message?: string };
+};
+
+const STATUS_MESSAGES: Record<number, string> = {
+  400: "잘못된 요청입니다.",
+  401: "로그인이 필요합니다.",
+  403: "권한이 없습니다. OWNER 또는 ADMIN만 초대할 수 있습니다.",
+  404: "요청한 리소스를 찾을 수 없습니다.",
+  409: "이미 대기 중인 초대가 있거나 이미 멤버입니다.",
+  429: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -31,8 +39,10 @@ async function handleResponse<T>(res: Response): Promise<T> {
     if (res.status === 204) return undefined as unknown as T;
     return res.json() as Promise<T>;
   }
-  const err = (await res.json().catch(() => ({}))) as ApiError;
-  throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
+  const body = (await res.json().catch(() => ({}))) as ApiErrorBody;
+  const serverMessage = body.error?.message;
+  const fallback = STATUS_MESSAGES[res.status] ?? "알 수 없는 오류가 발생했습니다.";
+  throw new Error(serverMessage ?? fallback);
 }
 
 export type CreateInvitationInput = {
@@ -43,7 +53,6 @@ export type CreateInvitationInput = {
 
 /** POST /workspaces/:id/invitations */
 export async function createInvitation(
-  accessToken: string,
   input: CreateInvitationInput,
 ): Promise<Invitation> {
   const res = await fetchWithAuth(
@@ -55,7 +64,6 @@ export async function createInvitation(
 
 /** GET /workspaces/:id/invitations */
 export async function fetchPendingInvitations(
-  accessToken: string,
   workspaceId: string,
 ): Promise<ReadonlyArray<Invitation>> {
   const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/invitations`);
@@ -78,7 +86,6 @@ export async function fetchInvitationByToken(
 
 /** POST /invitations/:token/accept */
 export async function acceptInvitation(
-  accessToken: string,
   token: string,
 ): Promise<{ workspaceId: string }> {
   const res = await fetchWithAuth(`${API_URL}/invitations/${token}/accept`, { method: "POST" });
@@ -87,7 +94,6 @@ export async function acceptInvitation(
 
 /** DELETE /invitations/:token */
 export async function cancelInvitation(
-  accessToken: string,
   token: string,
 ): Promise<void> {
   const res = await fetchWithAuth(`${API_URL}/invitations/${token}`, { method: "DELETE" });

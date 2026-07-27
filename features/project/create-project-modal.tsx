@@ -40,7 +40,7 @@ export function CreateProjectModal({
     setIsSaving(true);
     setError("");
     try {
-      const project = await createProjectApi(token, workspaceId, {
+      const project = await createProjectApi(workspaceId, {
         name: name.trim(),
         description: description.trim() || undefined,
       });

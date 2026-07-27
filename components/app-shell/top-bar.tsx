@@ -54,7 +54,7 @@ export function TopBar() {
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    countUnreadApi(token)
+    countUnreadApi()
       .then((r) => setUnreadCount(r.count))
       .catch(console.error);
   }, []);
@@ -107,7 +107,7 @@ export function TopBar() {
     if (!isPanelOpen && notifications.length === 0) {
       const token = getAccessToken();
       if (token) {
-        const data = await getNotificationsApi(token).catch(() => null);
+        const data = await getNotificationsApi().catch(() => null);
         if (data) setNotifications(data.items);
       }
     }

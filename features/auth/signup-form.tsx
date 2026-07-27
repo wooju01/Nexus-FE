@@ -69,7 +69,7 @@ export function SignupForm({ inviteToken, prefillEmail }: SignupFormProps = {}) 
       // 수락 실패해도 가입 자체는 끝났으니, 사용자에겐 메시지만 띄우고 로그인 페이지로 폴백.
       if (inviteToken) {
         try {
-          await acceptInvitation(tokens.accessToken, inviteToken);
+          await acceptInvitation(inviteToken);
           router.push("/dashboard");
           return;
         } catch (err) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,10 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
 
 import type { ValidationErrors } from "@/features/auth/validators";
+
+import { updateProfileApi } from "@/lib/api/auth";
+import { uploadFileApi } from "@/lib/api/upload";
+import { getAccessToken } from "@/lib/auth/tokens";
 
 import { AvatarUpload } from "./avatar-upload";
 import { useOnboarding } from "./onboarding-provider";
@@ -65,7 +68,9 @@ export function ProfileForm() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const input: ProfileInput = {
       displayName: state.profile.displayName,
@@ -73,12 +78,30 @@ export function ProfileForm() {
     };
     const nextErrors = validateProfile(input);
     setErrors(nextErrors);
+    if (hasErrors(nextErrors)) return;
 
-    if (hasErrors(nextErrors)) {
-      return;
+    const token = getAccessToken();
+    if (!token) return;
+
+    setIsSubmitting(true);
+    try {
+      let avatarUrl: string | undefined;
+      if (state.profile.avatarFile) {
+        const uploaded = await uploadFileApi(state.profile.avatarFile);
+        avatarUrl = uploaded.url;
+      }
+      await updateProfileApi(token, {
+        name: state.profile.displayName,
+        ...(state.profile.role ? { jobTitle: state.profile.role } : {}),
+        ...(avatarUrl ? { avatar: avatarUrl } : {}),
+      });
+      router.push("/workspace");
+    } catch {
+      // 실패해도 다음 단계로 이동 (프로필은 나중에 설정 가능)
+      router.push("/workspace");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.push("/workspace");
   }
 
   return (
@@ -178,8 +201,14 @@ export function ProfileForm() {
         <FieldError message={errors.role} />
       </div>
 
-      <Button type="submit" variant="primary" size="lg" className="w-full">
-        다음
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        className="w-full"
+        isLoading={isSubmitting}
+      >
+        {isSubmitting ? "저장 중…" : "다음"}
       </Button>
     </form>
   );
