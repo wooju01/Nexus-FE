@@ -10,7 +10,11 @@ import {
   type Notification,
   type NotificationType,
 } from "@/lib/api/notification";
-import { getAccessToken } from "@/lib/auth/tokens";
+import { acceptInvitation } from "@/lib/api/invitations";
+import { getWorkspacesApi } from "@/lib/api/workspace";
+import { useWorkspace } from "@/features/workspace/workspace-provider";
+import { useAppShell } from "@/components/app-shell/app-shell-context";
+import { getSocket } from "@/lib/ws/client";
 import { cn } from "@/lib/utils/cn";
 
 const TYPE_LABEL: Record<NotificationType, string> = {
@@ -31,6 +35,7 @@ const FILTERS: { label: string; value: NotificationType | "ALL" }[] = [
   { label: "DM", value: "DM_RECEIVED" },
   { label: "태스크", value: "TASK_ASSIGNED" },
   { label: "일정", value: "EVENT_UPCOMING" },
+  { label: "초대", value: "WORKSPACE_INVITED" },
 ];
 
 function formatRelative(iso: string) {
@@ -45,35 +50,99 @@ function formatRelative(iso: string) {
 
 export default function InboxPage() {
   const router = useRouter();
+  const { addWorkspace, switchWorkspace } = useWorkspace();
+  const { setInboxUnreadCount } = useAppShell();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<NotificationType | "ALL">("ALL");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [acceptingIds, setAcceptingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
     getNotificationsApi()
-      .then((data) => setNotifications(data.items))
+      .then((data) => {
+        setNotifications(data.items);
+        setInboxUnreadCount(data.items.filter((n) => !n.isRead).length);
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
+  }, [setInboxUnreadCount]);
+
+  // 인박스 페이지가 열려있는 동안 실시간으로 새 알림을 목록 상단에 추가
+  useEffect(() => {
+    const socket = getSocket();
+    function handleNew(notification: Notification) {
+      setNotifications((prev) => [notification, ...prev]);
+      // AppShellContext가 이미 뱃지 +1을 처리하므로 여기선 count를 건드리지 않음
+    }
+    socket.on("notification.created", handleNew);
+    return () => {
+      socket.off("notification.created", handleNew);
+    };
   }, []);
+
+  function updateNotifications(updated: Notification[]) {
+    setNotifications(updated);
+    setInboxUnreadCount(updated.filter((n) => !n.isRead).length);
+  }
 
   async function handleClick(n: Notification) {
     if (!n.isRead) {
-      const token = getAccessToken();
-      if (token) await markAsReadApi(n.id).catch(console.error);
-      setNotifications((prev) =>
-        prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
+      await markAsReadApi(n.id).catch(console.error);
+      updateNotifications(
+        notifications.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
       );
+    }
+    if (n.type === "DM_RECEIVED" && n.linkUrl) {
+      const channelId = n.linkUrl.split("/channels/")[1];
+      if (channelId) {
+        window.dispatchEvent(new CustomEvent("nexus:dm-created", { detail: { dmId: channelId } }));
+      }
     }
     if (n.linkUrl) router.push(n.linkUrl);
   }
 
   async function handleReadAll() {
-    const token = getAccessToken();
-    if (token) await markAllAsReadApi().catch(console.error);
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    await markAllAsReadApi().catch(console.error);
+    updateNotifications(notifications.map((n) => ({ ...n, isRead: true })));
+  }
+
+  async function handleAccept(n: Notification) {
+    const meta = n.metadata as { invitationToken?: string } | null;
+    if (!meta?.invitationToken) return;
+
+    setAcceptingIds((prev) => new Set(prev).add(n.id));
+    try {
+      const { workspaceId } = await acceptInvitation(meta.invitationToken);
+      await markAsReadApi(n.id).catch(console.error);
+      updateNotifications(
+        notifications.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
+      );
+
+      const workspaces = await getWorkspacesApi("");
+      const joined = workspaces.find((w) => w.id === workspaceId);
+      if (joined) {
+        addWorkspace(joined);
+        switchWorkspace(joined);
+      }
+      router.push("/dashboard");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "수락 중 오류가 발생했습니다.");
+    } finally {
+      setAcceptingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(n.id);
+        return next;
+      });
+    }
+  }
+
+  async function handleDecline(n: Notification) {
+    await markAsReadApi(n.id).catch(console.error);
+    updateNotifications(
+      notifications.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
+    );
   }
 
   const filtered = notifications.filter((n) => {
@@ -120,7 +189,7 @@ export default function InboxPage() {
       </div>
 
       {/* 필터 탭 */}
-      <div className="mb-4 flex gap-1 border-b border-border-subtle pb-0">
+      <div className="mb-4 flex gap-1 border-b border-border-subtle">
         {FILTERS.map((f) => (
           <button
             key={f.value}
@@ -147,11 +216,9 @@ export default function InboxPage() {
         <ul className="divide-y divide-border-subtle">
           {filtered.map((n) => (
             <li key={n.id}>
-              <button
-                type="button"
-                onClick={() => handleClick(n)}
+              <div
                 className={cn(
-                  "flex w-full gap-4 px-2 py-4 text-left transition-colors hover:bg-surface-elevated rounded-lg",
+                  "flex gap-4 px-2 py-4 rounded-lg",
                   !n.isRead && "bg-accent/5",
                 )}
               >
@@ -165,8 +232,40 @@ export default function InboxPage() {
                   <span className="mt-2 inline-block rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-fg-tertiary">
                     {TYPE_LABEL[n.type] ?? n.type}
                   </span>
+
+                  {/* 워크스페이스 초대 수락/거절 */}
+                  {n.type === "WORKSPACE_INVITED" && !n.isRead && (
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAccept(n)}
+                        disabled={acceptingIds.has(n.id)}
+                        className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90"
+                      >
+                        {acceptingIds.has(n.id) ? "처리 중..." : "수락"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDecline(n)}
+                        className="rounded-lg border border-border-subtle px-4 py-1.5 text-sm text-fg-secondary hover:bg-surface-elevated"
+                      >
+                        거절
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 일반 알림 링크 */}
+                  {n.type !== "WORKSPACE_INVITED" && n.linkUrl && (
+                    <button
+                      type="button"
+                      onClick={() => handleClick(n)}
+                      className="mt-2 text-sm text-accent hover:underline"
+                    >
+                      바로 가기 →
+                    </button>
+                  )}
                 </div>
-              </button>
+              </div>
             </li>
           ))}
         </ul>

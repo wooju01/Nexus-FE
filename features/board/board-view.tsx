@@ -66,7 +66,6 @@ function matchSearch(task: Task, q: string): boolean {
 
 type BoardViewProps = {
   project: Project | null;
-  selectedTaskId?: string;
 };
 
 type ColumnDef = {
@@ -84,9 +83,10 @@ const COLUMNS: ColumnDef[] = [
   { key: "Done",       label: "Done",        status: "DONE" },
 ];
 
-export function BoardView({ project, selectedTaskId }: BoardViewProps) {
+export function BoardView({ project }: BoardViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const selectedTaskId = searchParams.get("task") ?? undefined;
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   /**
@@ -260,13 +260,16 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
 
     if (activeTask.status === destStatus && activeTask.order === newOrder) return;
 
-    // 낙관적 업데이트 (status + order 동시 반영)
+    // 낙관적 업데이트 (status + order 동시 반영 — tasks 배열 + 열린 상세 패널)
     const prevStatus = activeTask.status;
     const prevOrder = activeTask.order;
     setTasks((prev) =>
       prev.map((t) =>
         t.id === activeId ? { ...t, status: destStatus, order: newOrder } : t,
       ),
+    );
+    setSelectedTask((curr) =>
+      curr?.id === activeId ? { ...curr, status: destStatus, order: newOrder } : curr,
     );
 
     const token = getAccessToken();
@@ -282,15 +285,29 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
           t.id === activeId ? { ...t, status: prevStatus, order: prevOrder } : t,
         ),
       );
+      setSelectedTask((curr) =>
+        curr?.id === activeId ? { ...curr, status: prevStatus, order: prevOrder } : curr,
+      );
     });
   }
 
   const boardPath = project ? `/projects/${project.id}` : "";
 
-  // selectedTaskId가 바뀌면 상세 태스크를 API로 가져옴
-  // selectedTaskId가 없으면 effect를 종료 — selectedTask는 아래 파생값으로 null 처리
+  // tasks 배열을 effect 내부에서 stale 없이 읽기 위한 ref
+  const tasksRef = useRef<Task[]>([]);
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+
+  // selectedTaskId가 바뀌면:
+  // 1) tasks 배열에 있는 기본 데이터를 즉시 표시 (UX: 딜레이 없음)
+  // 2) API로 전체 데이터(댓글 포함) 받아서 갱신
   useEffect(() => {
-    if (!selectedTaskId) return;
+    if (!selectedTaskId) {
+      setSelectedTask(null);
+      return;
+    }
+    const cached = tasksRef.current.find((t) => t.id === selectedTaskId);
+    setSelectedTask(cached ?? null);
+
     const token = getAccessToken();
     if (!token) return;
     let cancelled = false;
@@ -366,7 +383,7 @@ export function BoardView({ project, selectedTaskId }: BoardViewProps) {
   }
 
   function handleTaskCreated(task: Task) {
-    setTasks((prev) => [task, ...prev]);
+    setTasks((prev) => prev.some((t) => t.id === task.id) ? prev : [task, ...prev]);
     setCreateInitial(null);
   }
 

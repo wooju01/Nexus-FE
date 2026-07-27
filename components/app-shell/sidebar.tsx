@@ -7,11 +7,11 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   HomeIcon,
-  InboxIcon,
   LayersIcon,
   PeopleIcon,
   PlusIcon,
 } from "@/components/icons";
+
 
 import { getAccessToken } from "@/lib/auth/tokens";
 import { getProfileApi } from "@/lib/api/auth";
@@ -20,15 +20,14 @@ import { getDmsApi, type DmChannel } from "@/lib/api/dm";
 import { getProjectsApi, type Project } from "@/lib/api/project";
 import { getUnreadSummaryApi } from "@/lib/api/workspace";
 import { getSocket } from "@/lib/ws/socket";
+import { cn } from "@/lib/utils/cn";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
 import { InviteModal } from "@/features/invitation/invite-modal";
 import { DmStartModal } from "@/features/dm/dm-start-modal";
 import { CreateWorkspaceModal } from "@/features/workspace/create-workspace-modal";
 import { toggleStarred, getStarred, type StarredItem } from "@/lib/store/starred";
-import { getRecent, recordVisit, type RecentItem } from "@/lib/store/recent";
 import { SidebarLink } from "./sidebar-nav";
 import { SidebarStarredSection } from "./sidebar-starred-section";
-import { SidebarRecentSection } from "./sidebar-recent-section";
 import { SidebarChannelList } from "./sidebar-channel-list";
 import { SidebarProjectList } from "./sidebar-project-list";
 import { SidebarDmList } from "./sidebar-dm-list";
@@ -73,11 +72,9 @@ export function Sidebar() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
-  // starred/recent는 localStorage에서 읽는 파생값 — 버전 카운터로 재계산 트리거
+  // starred는 localStorage에서 읽는 파생값 — 버전 카운터로 재계산 트리거
   const [starVersion, setStarVersion] = useState(0);
-  const [recentVersion, setRecentVersion] = useState(0);
   const starred = useMemo(() => { void starVersion; return getStarred(wsId); }, [wsId, starVersion]);
-  const recent = useMemo(() => { void recentVersion; return getRecent(wsId); }, [wsId, recentVersion]);
 
   // dmUserMap: 렌더에 전달되므로 useState, effect 내부 읽기는 ref로 스냅샷
   const [dmUserMap, setDmUserMap] = useState<Record<string, { name: string; status: string }>>({});
@@ -87,30 +84,6 @@ export function Sidebar() {
   useEffect(() => { dmsRef.current = dms; }, [dms]);
   useEffect(() => { dmUserMapRef.current = dmUserMap; }, [dmUserMap]);
 
-  useEffect(() => {
-    if (!wsId) return;
-    const channelMatch = pathname.match(/^\/channels\/([^/]+)/);
-    const projectMatch = pathname.match(/^\/projects\/([^/]+)/);
-    let type: RecentItem["type"] | null = null;
-    let id = "";
-    let name = "";
-
-    if (channelMatch) {
-      id = channelMatch[1];
-      const dmInfo = dmUserMapRef.current[id];
-      if (dmInfo) { type = "dm"; name = dmInfo.name; }
-      else { type = "channel"; name = channels.find((c) => c.id === id)?.name ?? ""; }
-    } else if (projectMatch) {
-      id = projectMatch[1];
-      type = "project";
-      name = projects.find((p) => p.id === id)?.name ?? "";
-    }
-
-    if (type && id && name) {
-      recordVisit(wsId, { id, type, name, href: pathname });
-      setRecentVersion((n) => n + 1);
-    }
-  }, [pathname, wsId, channels, projects]);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -267,63 +240,54 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
-        <ul className="mb-4 space-y-0.5">
-          <SidebarLink href="/dashboard" label="Home" icon={<HomeIcon className="size-4" />} isActive={pathname === "/dashboard"} />
-          <SidebarLink href="/inbox" label="Inbox" icon={<InboxIcon className="size-4" />} isActive={pathname === "/inbox"} />
-          <SidebarLink href="/my-tasks" label="My tasks" icon={<CheckCircleIcon className="size-4" />} isActive={pathname === "/my-tasks"} />
-          <SidebarLink href="/calendar" label="Calendar" icon={<CalendarIcon className="size-4" />} isActive={pathname.startsWith("/calendar")} />
-          <SidebarLink href="/my-week" label="My week" icon={<LayersIcon className="size-4" />} isActive={pathname === "/my-week"} />
-        </ul>
+          <ul className="mb-4 space-y-0.5">
+            <SidebarLink href="/dashboard" label="Home" icon={<HomeIcon className="size-4" />} isActive={pathname === "/dashboard"} />
+            <SidebarLink href="/my-tasks" label="My tasks" icon={<CheckCircleIcon className="size-4" />} isActive={pathname === "/my-tasks"} />
+            <SidebarLink href="/calendar" label="Calendar" icon={<CalendarIcon className="size-4" />} isActive={pathname.startsWith("/calendar")} />
+            <SidebarLink href="/my-week" label="My week" icon={<LayersIcon className="size-4" />} isActive={pathname === "/my-week"} />
+          </ul>
 
-        <SidebarStarredSection
-          wsId={wsId}
-          pathname={pathname}
-          starred={starred}
-          dmUserMap={dmUserMap}
-          onToggleStar={handleToggleStar}
-        />
+          <SidebarStarredSection
+            wsId={wsId}
+            pathname={pathname}
+            starred={starred}
+            dmUserMap={dmUserMap}
+            onToggleStar={handleToggleStar}
+          />
 
-        <SidebarRecentSection
-          wsId={wsId}
-          pathname={pathname}
-          recent={recent}
-          dmUserMap={dmUserMap}
-          onToggleStar={handleToggleStar}
-        />
+          <SidebarChannelList
+            wsId={wsId}
+            pathname={pathname}
+            channels={channels}
+            unreadCounts={unreadCounts}
+            onMarkRead={handleMarkRead}
+            onToggleStar={handleToggleStar}
+          />
 
-        <SidebarChannelList
-          wsId={wsId}
-          pathname={pathname}
-          channels={channels}
-          unreadCounts={unreadCounts}
-          onMarkRead={handleMarkRead}
-          onToggleStar={handleToggleStar}
-        />
+          <SidebarProjectList
+            wsId={wsId}
+            pathname={pathname}
+            projects={projects}
+            onProjectsChange={setProjects}
+            onChannelsChange={refreshChannels}
+            onRecentChange={() => {}}
+          />
 
-        <SidebarProjectList
-          wsId={wsId}
-          pathname={pathname}
-          projects={projects}
-          onProjectsChange={setProjects}
-          onChannelsChange={refreshChannels}
-          onRecentChange={() => setRecentVersion((n) => n + 1)}
-        />
-
-        <SidebarDmList
-          wsId={wsId}
-          pathname={pathname}
-          dms={dms}
-          unreadCounts={unreadCounts}
-          onMarkRead={handleMarkRead}
-          onToggleStar={handleToggleStar}
-          onDmStart={() => setIsDmModalOpen(true)}
-          onDmClose={(dmId) => {
-            hiddenDmIds.current.add(dmId);
-            saveHiddenDm(currentUserId, dmId);
-            setDms((prev) => prev.filter((d) => d.id !== dmId));
-          }}
-        />
-      </nav>
+          <SidebarDmList
+            wsId={wsId}
+            pathname={pathname}
+            dms={dms}
+            unreadCounts={unreadCounts}
+            onMarkRead={handleMarkRead}
+            onToggleStar={handleToggleStar}
+            onDmStart={() => setIsDmModalOpen(true)}
+            onDmClose={(dmId) => {
+              hiddenDmIds.current.add(dmId);
+              saveHiddenDm(currentUserId, dmId);
+              setDms((prev) => prev.filter((d) => d.id !== dmId));
+            }}
+          />
+        </nav>
 
       <div className="border-t border-border-subtle p-3">
         <button

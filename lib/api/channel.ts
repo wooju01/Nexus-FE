@@ -44,3 +44,4 @@ export async function joinChannelApi(
 ): Promise<void> {
   await fetchWithAuth(`${API_URL}/channels/${channelId}/members/me`, { method: "POST" });
 }
+

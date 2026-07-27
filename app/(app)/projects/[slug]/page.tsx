@@ -10,15 +10,10 @@ import { BoardView } from "@/features/board/board-view";
 type ProjectBoardPageProps = {
   // slug 파라미터명이지만 실제값은 project id(cuid)
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ task?: string }>;
 };
 
-export default function ProjectBoardPage({
-  params,
-  searchParams,
-}: ProjectBoardPageProps) {
+export default function ProjectBoardPage({ params }: ProjectBoardPageProps) {
   const { slug: projectId } = use(params);
-  const { task: selectedTaskId } = use(searchParams);
 
   const [project, setProject] = useState<Project | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
@@ -35,7 +30,7 @@ export default function ProjectBoardPage({
 
   return (
     <Suspense fallback={null}>
-      <BoardView project={project} selectedTaskId={selectedTaskId} />
+      <BoardView project={project} />
     </Suspense>
   );
 }
