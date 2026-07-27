@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
-  BellIcon,
   CalendarIcon,
   ChevronDownIcon,
   SparklesIcon,
@@ -13,14 +12,7 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { useUser } from "@/features/auth/user-provider";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
-import { getAccessToken, clearTokens } from "@/lib/auth/tokens";
-import {
-  getNotificationsApi,
-  countUnreadApi,
-  type Notification,
-} from "@/lib/api/notification";
-import { getSocket } from "@/lib/ws/client";
-import { NotificationPanel } from "@/features/notification/notification-panel";
+import { clearTokens } from "@/lib/auth/tokens";
 import type { Presence } from "@/types/domain";
 import { cn } from "@/lib/utils/cn";
 
@@ -36,12 +28,6 @@ export function TopBar() {
   const { user, isLoading } = useUser();
   const { currentWorkspace, workspaces, switchWorkspace } = useWorkspace();
 
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const bellRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const userButtonRef = useRef<HTMLButtonElement>(null);
@@ -50,40 +36,8 @@ export function TopBar() {
   const wsSwitcherRef = useRef<HTMLDivElement>(null);
   const wsSwitcherButtonRef = useRef<HTMLButtonElement>(null);
 
-  // 초기 미읽음 카운트 fetch
-  useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
-    countUnreadApi(token)
-      .then((r) => setUnreadCount(r.count))
-      .catch(console.error);
-  }, []);
-
-  // 실시간 알림 수신
-  useEffect(() => {
-    const socket = getSocket();
-
-    function onNotificationCreated(notification: Notification) {
-      setNotifications((prev) => [notification, ...prev]);
-      setUnreadCount((c) => c + 1);
-    }
-
-    socket.on("notification.created", onNotificationCreated);
-    return () => {
-      socket.off("notification.created", onNotificationCreated);
-    };
-  }, []);
-
-  // 알림 패널 + 유저 메뉴 + 워크스페이스 스위처 외부 클릭 시 닫기
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(e.target as Node) &&
-        !bellRef.current?.contains(e.target as Node)
-      ) {
-        setIsPanelOpen(false);
-      }
       if (
         userMenuRef.current &&
         !userMenuRef.current.contains(e.target as Node) &&
@@ -103,39 +57,13 @@ export function TopBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  async function handleBellClick() {
-    if (!isPanelOpen && notifications.length === 0) {
-      const token = getAccessToken();
-      if (token) {
-        const data = await getNotificationsApi(token).catch(() => null);
-        if (data) setNotifications(data.items);
-      }
-    }
-    setIsPanelOpen((prev) => !prev);
-    setIsUserMenuOpen(false);
-  }
-
-  function handleRead(id: string) {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-    );
-    setUnreadCount((c) => Math.max(0, c - 1));
-  }
-
-  function handleReadAll() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setUnreadCount(0);
-  }
-
   function handleUserMenuToggle() {
     setIsUserMenuOpen((prev) => !prev);
-    setIsPanelOpen(false);
     setIsWsSwitcherOpen(false);
   }
 
   function handleWsSwitcherToggle() {
     setIsWsSwitcherOpen((prev) => !prev);
-    setIsPanelOpen(false);
     setIsUserMenuOpen(false);
   }
 
@@ -198,7 +126,6 @@ export function TopBar() {
                       : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
                   )}
                 >
-                  {/* 워크스페이스 아이콘 또는 이니셜 */}
                   <span className="flex size-6 shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-white">
                     {ws.name.slice(0, 2).toUpperCase()}
                   </span>
@@ -232,38 +159,6 @@ export function TopBar() {
           <SparklesIcon />
         </button>
 
-        {/* 알림 벨 */}
-        <div className="relative">
-          <button
-            ref={bellRef}
-            type="button"
-            aria-label={`알림${unreadCount > 0 ? ` ${unreadCount}건` : ""}`}
-            onClick={handleBellClick}
-            className="relative flex size-9 items-center justify-center rounded-lg text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
-          >
-            <BellIcon />
-            {unreadCount > 0 ? (
-              <span
-                aria-hidden="true"
-                className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-priority-p1 text-[10px] font-semibold text-white"
-              >
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            ) : null}
-          </button>
-
-          {isPanelOpen ? (
-            <div ref={panelRef}>
-              <NotificationPanel
-                notifications={notifications}
-                onRead={handleRead}
-                onReadAll={handleReadAll}
-                onClose={() => setIsPanelOpen(false)}
-              />
-            </div>
-          ) : null}
-        </div>
-
         <Link
           href="/calendar"
           aria-label="캘린더"
@@ -294,7 +189,7 @@ export function TopBar() {
               size="md"
               name={user?.name ?? ""}
             />
-            <span className="text-sm font-medium text-fg-primary">
+            <span className="text-sm font-medium text-fg-primary" suppressHydrationWarning>
               {isLoading ? "..." : (user?.name ?? "사용자")}
             </span>
             <ChevronDownIcon

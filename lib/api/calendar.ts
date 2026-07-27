@@ -22,18 +22,13 @@ import type { CalendarEvent, WorkspaceId } from "@/types/domain";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
-type ApiError = {
-  message: string;
-  statusCode?: number;
-};
-
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) {
     if (res.status === 204) return undefined as unknown as T;
     return res.json() as Promise<T>;
   }
-  const err = (await res.json().catch(() => ({}))) as ApiError;
-  throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
+  const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+  throw new Error(body.error?.message ?? "알 수 없는 오류가 발생했습니다.");
 }
 
 export type ListEventsParams = {
@@ -45,7 +40,6 @@ export type ListEventsParams = {
 
 /** GET /workspaces/:id/calendar/events?from=&to= */
 export async function listCalendarEvents(
-  accessToken: string,
   params: ListEventsParams,
 ): Promise<CalendarEvent[]> {
   const qs = new URLSearchParams({ from: params.from, to: params.to });
@@ -62,7 +56,6 @@ export async function listCalendarEvents(
  * 그 외 에러는 throw.
  */
 export async function getCalendarEventById(
-  accessToken: string,
   workspaceId: WorkspaceId,
   eventId: string,
 ): Promise<CalendarEvent | null> {
@@ -86,7 +79,6 @@ export type CreateEventInput = {
 
 /** POST /workspaces/:id/calendar/events */
 export async function createCalendarEvent(
-  accessToken: string,
   workspaceId: WorkspaceId,
   input: CreateEventInput,
 ): Promise<CalendarEvent> {
@@ -101,7 +93,6 @@ export type UpdateEventInput = Partial<CreateEventInput>;
 
 /** PATCH /workspaces/:id/calendar/events/:eventId */
 export async function updateCalendarEvent(
-  accessToken: string,
   workspaceId: WorkspaceId,
   eventId: string,
   input: UpdateEventInput,
@@ -115,7 +106,6 @@ export async function updateCalendarEvent(
 
 /** DELETE /workspaces/:id/calendar/events/:eventId */
 export async function deleteCalendarEvent(
-  accessToken: string,
   workspaceId: WorkspaceId,
   eventId: string,
 ): Promise<void> {

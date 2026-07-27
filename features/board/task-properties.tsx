@@ -113,7 +113,7 @@ export function TaskProperties({ task, onUpdate }: TaskPropertiesProps) {
 
       {/* Assignees — 멤버 추가/제거 (인라인 편집) */}
       <Row label="Assignees">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1">
           {task.assignees.length === 0 ? (
             <span className="text-fg-tertiary">미지정</span>
           ) : (

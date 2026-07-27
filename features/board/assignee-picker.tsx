@@ -49,7 +49,7 @@ export function AssigneePicker({ task, onChange }: AssigneePickerProps) {
     if (!isOpen || loaded || !workspaceId) return;
     const token = getAccessToken();
     if (!token) return;
-    getMembersApi(token, workspaceId)
+    getMembersApi(workspaceId)
       .then((m) => {
         setMembers(m);
         setLoaded(true);
@@ -105,7 +105,7 @@ export function AssigneePicker({ task, onChange }: AssigneePickerProps) {
   );
 
   return (
-    <div ref={containerRef} className="relative inline-block">
+    <div ref={containerRef} className="inline-block">
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
@@ -120,7 +120,7 @@ export function AssigneePicker({ task, onChange }: AssigneePickerProps) {
         <div
           role="dialog"
           aria-label="담당자 선택"
-          className="absolute left-0 top-full z-20 mt-1 w-64 rounded-lg border border-border-subtle bg-surface-elevated p-1 shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-border-subtle bg-surface-elevated p-1 shadow-lg"
         >
           <input
             ref={searchRef}

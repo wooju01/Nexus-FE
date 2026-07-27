@@ -101,7 +101,7 @@ export default function MyWeekPage() {
     const token = getAccessToken();
     if (!token) return;
 
-    const tasksPromise = getProjectsApi(token, currentWorkspace.id)
+    const tasksPromise = getProjectsApi(currentWorkspace.id)
       .then(async (projects) => {
         const allTasks = await Promise.all(
           projects.map((p) =>
@@ -117,7 +117,7 @@ export default function MyWeekPage() {
           .filter((t) => t.assignees.some((a) => a.userId === user.id));
       });
 
-    const eventsPromise = listCalendarEvents(token, {
+    const eventsPromise = listCalendarEvents({
       workspaceId: currentWorkspace.id,
       from: start.toISOString(),
       to: end.toISOString(),

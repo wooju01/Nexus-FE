@@ -50,7 +50,7 @@ export function PendingInvitationList({
       }
 
       try {
-        const list = await fetchPendingInvitations(accessToken, workspaceId);
+        const list = await fetchPendingInvitations(workspaceId);
         if (cancelled) return;
         setInvitations(list);
         setLoadState("ready");
@@ -86,7 +86,7 @@ export function PendingInvitationList({
     setInvitations((prev) => prev.filter((inv) => inv.token !== token));
 
     try {
-      await cancelInvitation(accessToken, token);
+      await cancelInvitation(token);
     } catch (err) {
       setInvitations(snapshot);
       setCancelError(

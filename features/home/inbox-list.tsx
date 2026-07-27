@@ -80,7 +80,7 @@ export function InboxList() {
     const token = getAccessToken();
     if (!token) return;
 
-    getNotificationsApi(token)
+    getNotificationsApi()
       .then(({ items }) => setNotifications(items))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -89,7 +89,7 @@ export function InboxList() {
   async function handleMarkRead(id: string) {
     const token = getAccessToken();
     if (!token) return;
-    await markAsReadApi(token, id).catch(console.error);
+    await markAsReadApi(id).catch(console.error);
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
     );

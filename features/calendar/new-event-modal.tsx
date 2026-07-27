@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import React, { useState } from "react";
 
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -125,7 +125,7 @@ export function NewEventModal({
     onClose();
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const nextErrors = validateNewEvent(values);
@@ -156,12 +156,11 @@ export function NewEventModal({
       const saved =
         mode === "update" && editingEvent
           ? await updateCalendarEvent(
-              accessToken,
               workspaceId,
               editingEvent.id,
               payload,
             )
-          : await createCalendarEvent(accessToken, workspaceId, payload);
+          : await createCalendarEvent(workspaceId, payload);
 
       onSubmitted(saved, mode);
       handleClose();

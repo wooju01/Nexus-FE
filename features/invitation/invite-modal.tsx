@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import type { FormEvent } from "react";
+import React, { useCallback, useState } from "react";
 
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -97,7 +96,7 @@ export function InviteModal({
     if (serverError) setServerError(null);
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const nextErrors = validateInvite({ email });
@@ -113,7 +112,7 @@ export function InviteModal({
     setIsSubmitting(true);
     setServerError(null);
     try {
-      const invitation: Invitation = await createInvitation(accessToken, {
+      const invitation: Invitation = await createInvitation({
         workspaceId,
         email,
         role,

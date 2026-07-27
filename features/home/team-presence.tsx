@@ -51,7 +51,7 @@ export function TeamPresence() {
     const token = getAccessToken();
     if (!token || !currentWorkspace) return;
 
-    getMembersApi(token, currentWorkspace.id)
+    getMembersApi(currentWorkspace.id)
       .then((all) => {
         const active = all.filter(
           (m) =>

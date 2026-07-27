@@ -58,7 +58,7 @@ export function AcceptView({ invitation }: AcceptViewProps) {
     setIsAccepting(true);
     setError(null);
     try {
-      await acceptInvitation(accessToken, invitation.token);
+      await acceptInvitation(invitation.token);
       setIsAccepted(true);
     } catch (err) {
       setError(

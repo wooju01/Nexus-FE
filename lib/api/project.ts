@@ -3,8 +3,8 @@ import { fetchWithAuth } from "@/lib/auth/fetch-with-auth";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
-  const err = await res.json();
-  throw new Error(err.message ?? "알 수 없는 오류가 발생했습니다.");
+  const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+  throw new Error(body.error?.message ?? "알 수 없는 오류가 발생했습니다.");
 }
 
 export type Project = {
@@ -20,7 +20,6 @@ export type Project = {
 
 // GET /workspaces/:workspaceId/projects
 export async function getProjectsApi(
-  accessToken: string,
   workspaceId: string,
 ): Promise<Project[]> {
   const res = await fetchWithAuth(`${API_URL}/workspaces/${workspaceId}/projects`);
@@ -29,7 +28,6 @@ export async function getProjectsApi(
 
 // POST /workspaces/:workspaceId/projects
 export async function createProjectApi(
-  accessToken: string,
   workspaceId: string,
   data: { name: string; description?: string },
 ): Promise<Project> {
@@ -39,7 +37,6 @@ export async function createProjectApi(
 
 // GET /projects/:id
 export async function getProjectApi(
-  accessToken: string,
   projectId: string,
 ): Promise<Project> {
   const res = await fetchWithAuth(`${API_URL}/projects/${projectId}`);
@@ -48,7 +45,6 @@ export async function getProjectApi(
 
 // PATCH /projects/:id
 export async function updateProjectApi(
-  accessToken: string,
   projectId: string,
   data: { name?: string; description?: string },
 ): Promise<Project> {
@@ -72,7 +68,6 @@ export type ProjectMember = {
 
 // GET /projects/:id/members
 export async function getProjectMembersApi(
-  accessToken: string,
   projectId: string,
 ): Promise<ProjectMember[]> {
   const res = await fetchWithAuth(`${API_URL}/projects/${projectId}/members`);
@@ -81,7 +76,6 @@ export async function getProjectMembersApi(
 
 // POST /projects/:id/members — 워크스페이스 멤버를 프로젝트에 초대
 export async function addProjectMemberApi(
-  accessToken: string,
   projectId: string,
   data: { userId: string; role?: ProjectRole },
 ): Promise<ProjectMember> {
@@ -91,7 +85,6 @@ export async function addProjectMemberApi(
 
 // PATCH /projects/:id/members/:targetUserId — 역할 변경
 export async function updateProjectMemberApi(
-  accessToken: string,
   projectId: string,
   targetUserId: string,
   role: ProjectRole,
@@ -105,25 +98,23 @@ export async function updateProjectMemberApi(
 
 // DELETE /projects/:id/members/:targetUserId
 export async function removeProjectMemberApi(
-  accessToken: string,
   projectId: string,
   targetUserId: string,
 ): Promise<void> {
   const res = await fetchWithAuth(`${API_URL}/projects/${projectId}/members/${targetUserId}`, { method: "DELETE" });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message ?? "멤버 제거 실패");
+    const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new Error(body.error?.message ?? "멤버 제거 실패");
   }
 }
 
 // DELETE /projects/:id
 export async function deleteProjectApi(
-  accessToken: string,
   projectId: string,
 ): Promise<void> {
   const res = await fetchWithAuth(`${API_URL}/projects/${projectId}`, { method: "DELETE" });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message ?? "삭제 실패");
+    const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new Error(body.error?.message ?? "삭제 실패");
   }
 }

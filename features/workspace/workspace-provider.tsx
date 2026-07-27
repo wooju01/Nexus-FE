@@ -16,6 +16,7 @@ type WorkspaceContextValue = {
   workspaces: Workspace[];
   isLoading: boolean;
   switchWorkspace: (workspace: Workspace) => void;
+  addWorkspace: (workspace: Workspace) => void;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue>({
@@ -23,6 +24,7 @@ const WorkspaceContext = createContext<WorkspaceContextValue>({
   workspaces: [],
   isLoading: true,
   switchWorkspace: () => {},
+  addWorkspace: () => {},
 });
 
 export function useWorkspace() {
@@ -54,8 +56,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setCurrentWorkspace(workspace);
   }, []);
 
+  const addWorkspace = useCallback((workspace: Workspace) => {
+    setWorkspaces((prev) => [...prev, workspace]);
+    setCurrentWorkspace(workspace);
+  }, []);
+
   return (
-    <WorkspaceContext.Provider value={{ currentWorkspace, workspaces, isLoading, switchWorkspace }}>
+    <WorkspaceContext.Provider value={{ currentWorkspace, workspaces, isLoading, switchWorkspace, addWorkspace }}>
       {children}
     </WorkspaceContext.Provider>
   );
