@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   AtSignIcon,
@@ -72,6 +73,7 @@ function relativeTime(iso: string): string {
 }
 
 export function InboxList() {
+  const router = useRouter();
   const [tab, setTab] = useState<TabKey>("all");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,13 +88,21 @@ export function InboxList() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleMarkRead(id: string) {
-    const token = getAccessToken();
-    if (!token) return;
-    await markAsReadApi(id).catch(console.error);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-    );
+  async function handleClick(n: Notification) {
+    if (!n.isRead) {
+      await markAsReadApi(n.id).catch(console.error);
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
+      );
+    }
+    if (!n.linkUrl) return;
+    if (n.type === "DM_RECEIVED") {
+      const channelId = n.linkUrl.split("/channels/")[1];
+      if (channelId) {
+        window.dispatchEvent(new CustomEvent("nexus:dm-created", { detail: { dmId: channelId } }));
+      }
+    }
+    router.push(n.linkUrl);
   }
 
   const items = notifications.filter((n) => tabMatch(n, tab));
@@ -141,7 +151,7 @@ export function InboxList() {
           {items.map((n) => (
             <li
               key={n.id}
-              onClick={() => !n.isRead && handleMarkRead(n.id)}
+              onClick={() => handleClick(n)}
               className={cn(
                 "flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated",
                 !n.isRead ? "bg-surface-subtle" : "bg-transparent",

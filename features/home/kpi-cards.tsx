@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { ComponentType, SVGProps } from "react";
 
 import {
@@ -22,6 +23,7 @@ type KpiCardData = {
   hint: string;
   hintTone?: "neutral" | "warning" | "accent";
   icon: ComponentType<SVGProps<SVGSVGElement>>;
+  href?: string;
 };
 
 type KpiState = {
@@ -82,6 +84,7 @@ export function KpiCards() {
       hint: kpi ? (kpi.unreadInbox > 0 ? "읽지 않은 알림" : "모두 읽음") : "",
       hintTone: kpi && kpi.unreadInbox > 0 ? "accent" : "neutral",
       icon: InboxIcon,
+      href: "/inbox",
     },
     {
       label: "Due today",
@@ -93,6 +96,7 @@ export function KpiCards() {
         : "",
       hintTone: kpi && kpi.overdueCount > 0 ? "warning" : "neutral",
       icon: CheckCircleIcon,
+      href: "/my-tasks",
     },
     {
       label: "Unread messages",
@@ -135,8 +139,8 @@ function KpiCard({ card }: { card: KpiCardData }) {
         ? "text-accent"
         : "text-fg-tertiary";
 
-  return (
-    <article className="rounded-lg border border-border-subtle bg-surface-subtle p-4">
+  const inner = (
+    <>
       <header className="flex items-center justify-between text-fg-tertiary">
         <span className="text-xs font-medium uppercase tracking-wide">
           {card.label}
@@ -149,6 +153,23 @@ function KpiCard({ card }: { card: KpiCardData }) {
         </span>
         <span className={`text-xs ${hintColor}`}>{card.hint}</span>
       </div>
+    </>
+  );
+
+  if (card.href) {
+    return (
+      <Link
+        href={card.href}
+        className="block rounded-lg border border-border-subtle bg-surface-subtle p-4 transition-colors hover:bg-surface-elevated"
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <article className="rounded-lg border border-border-subtle bg-surface-subtle p-4">
+      {inner}
     </article>
   );
 }

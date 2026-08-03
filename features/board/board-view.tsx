@@ -98,10 +98,9 @@ export function BoardView({ project }: BoardViewProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMemberPanelOpen, setIsMemberPanelOpen] = useState(false);
 
-  // 현재 뷰 (board | table | timeline | calendar)
   const view: ViewKey = parseView(searchParams.get("view"));
 
-  // URL ?q= / ?assignee= / ?label= / ?priority= 읽기
+ 
   const query = searchParams.get("q") ?? "";
   const selectedAssigneeIds = useMemo(
     () => readMulti(searchParams, "assignee"),
@@ -396,10 +395,10 @@ export function BoardView({ project }: BoardViewProps) {
     <div className="flex h-full min-h-0 flex-1">
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-fg-primary">{project.name}</h1>
-            <span aria-hidden="true" className="text-sm text-fg-tertiary">/</span>
-            <span className="text-sm text-fg-secondary">Board</span>
+          <div className="flex min-w-0 shrink items-center gap-3">
+            <h1 className="truncate text-lg font-semibold text-fg-primary">{project.name}</h1>
+            <span aria-hidden="true" className="shrink-0 text-sm text-fg-tertiary">/</span>
+            <span className="shrink-0 text-sm text-fg-secondary">Board</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -507,6 +506,7 @@ export function BoardView({ project }: BoardViewProps) {
 
       {selectedTask ? (
         <TaskDetailPane
+          key={selectedTask.id}
           task={selectedTask}
           closeHref={boardPath}
           onTaskUpdated={handleTaskUpdated}

@@ -71,7 +71,7 @@ export function MyTasks() {
             return (
               <li key={task.id}>
                 <Link
-                  href={`/projects/${task.projectId}`}
+                  href={`/projects/${task.projectId}?task=${task.id}`}
                   className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated"
                 >
                   <div className="min-w-0 flex-1">
