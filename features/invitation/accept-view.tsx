@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CheckCircleIcon, PeopleIcon } from "@/components/icons";
 import { acceptInvitation } from "@/lib/api/invitations";
-import { getAccessToken } from "@/lib/auth/tokens";
+import { getAccessToken, clearTokens } from "@/lib/auth/tokens";
+import { useUser } from "@/features/auth/user-provider";
 
 import type { Invitation } from "@/types/invitation";
 
@@ -33,6 +34,7 @@ type AcceptViewProps = {
  */
 export function AcceptView({ invitation }: AcceptViewProps) {
   const router = useRouter();
+  const { user } = useUser();
   const [isAccepting, setIsAccepting] = useState(false);
   const [isAccepted, setIsAccepted] = useState(
     invitation.status === "accepted",
@@ -47,6 +49,17 @@ export function AcceptView({ invitation }: AcceptViewProps) {
       router.replace(`/signup?invite=${invitation.token}`);
     }
   }, [invitation.status, invitation.token, isAccepted, router]);
+
+  // 로그인된 이메일과 초대 이메일이 다를 때
+  const isEmailMismatch =
+    invitation.email &&
+    user?.email &&
+    invitation.email.toLowerCase() !== user.email.toLowerCase();
+
+  function handleSwitchAccount() {
+    clearTokens();
+    router.replace(`/signup?invite=${invitation.token}`);
+  }
 
   const handleAccept = useCallback(async () => {
     const accessToken = getAccessToken();
@@ -151,26 +164,47 @@ export function AcceptView({ invitation }: AcceptViewProps) {
         <p className="mt-1 text-xs text-fg-tertiary">{invitation.email}</p>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="mt-4 text-sm text-red-500">
-          {error}
-        </p>
-      ) : null}
+      {isEmailMismatch ? (
+        <div className="mt-6 w-full rounded-lg border border-priority-p1/30 bg-priority-p1/5 px-4 py-3 text-center">
+          <p className="text-sm text-priority-p1">
+            초대받은 이메일과 로그인한 이메일이 다릅니다.
+          </p>
+          <p className="mt-1 text-xs text-fg-tertiary">
+            현재 로그인: <span className="text-fg-secondary">{user?.email}</span>
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSwitchAccount}
+            className="mt-3 w-full"
+          >
+            {invitation.email}(으)로 계속하기
+          </Button>
+        </div>
+      ) : (
+        <>
+          {error ? (
+            <p role="alert" className="mt-4 text-sm text-red-500">
+              {error}
+            </p>
+          ) : null}
 
-      <Button
-        variant="primary"
-        size="lg"
-        onClick={handleAccept}
-        isLoading={isAccepting}
-        className="mt-8 w-full"
-      >
-        초대 수락
-      </Button>
-      <p className="mt-3 text-[11px] text-fg-tertiary">
-        수락하면{" "}
-        <span className="text-fg-secondary">{invitation.workspaceName}</span>
-        의 팀원이 됩니다.
-      </p>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={handleAccept}
+            isLoading={isAccepting}
+            className="mt-8 w-full"
+          >
+            초대 수락
+          </Button>
+          <p className="mt-3 text-[11px] text-fg-tertiary">
+            수락하면{" "}
+            <span className="text-fg-secondary">{invitation.workspaceName}</span>
+            의 팀원이 됩니다.
+          </p>
+        </>
+      )}
     </div>
   );
 }

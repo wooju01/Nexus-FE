@@ -7,6 +7,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
   throw new Error(body.error?.message ?? "알 수 없는 오류가 발생했습니다.");
 }
 
+export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER";
+
 type Workspace = {
   id: string;
   name: string;
@@ -14,6 +16,7 @@ type Workspace = {
   iconUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  role?: WorkspaceRole;
 };
 
 

@@ -7,11 +7,15 @@ async function handleResponse<T>(res: Response): Promise<T> {
   throw new Error(body.error?.message ?? "알 수 없는 오류가 발생했습니다.");
 }
 
+export type MemberRole = "OWNER" | "ADMIN" | "MEMBER" | "GUEST";
+
 export type WorkspaceMember = {
   userId: string;
+  role: MemberRole;
   user: {
     id: string;
     name: string;
+    username: string;
     jobTitle: string | null;
     avatar: string | null;
     status: "ONLINE" | "AWAY" | "DND" | "OFFLINE";

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   CheckCircleIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils/cn";
-import { createInvitation } from "@/lib/api/invitations";
+import { createInvitation, fetchPendingInvitations, cancelInvitation } from "@/lib/api/invitations";
 import { getAccessToken } from "@/lib/auth/tokens";
 import {
   validateInvite,
@@ -78,6 +78,15 @@ export function InviteModal({
     [],
   );
   const [copied, setCopied] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState<ReadonlyArray<Invitation>>([]);
+  const [cancellingToken, setCancellingToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchPendingInvitations(workspaceId)
+      .then(setPendingInvitations)
+      .catch(console.error);
+  }, [isOpen, workspaceId]);
 
   /**
    * 가장 최근에 발급된 초대 링크.
@@ -94,6 +103,19 @@ export function InviteModal({
       setErrors((prev) => ({ ...prev, email: undefined }));
     }
     if (serverError) setServerError(null);
+  }
+
+  async function handleCancelInvitation(token: string) {
+    setCancellingToken(token);
+    try {
+      await cancelInvitation(token);
+      setPendingInvitations((prev) => prev.filter((inv) => inv.token !== token));
+      if (serverError) setServerError(null);
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : "초대 취소 중 오류가 발생했습니다.");
+    } finally {
+      setCancellingToken(null);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -152,6 +174,8 @@ export function InviteModal({
     setServerError(null);
     setInvitedList([]);
     setCopied(false);
+    setPendingInvitations([]);
+    setCancellingToken(null);
     onClose();
   }
 
@@ -245,6 +269,31 @@ export function InviteModal({
           </Button>
         </div>
       </div>
+
+      {/* 대기 중인 초대 목록 */}
+      {pendingInvitations.length > 0 ? (
+        <div className="mt-5 rounded-lg border border-border-subtle bg-surface-base p-3">
+          <p className="mb-2 text-xs font-medium text-fg-tertiary">대기 중인 초대</p>
+          <ul className="space-y-1.5">
+            {pendingInvitations.map((inv) => (
+              <li key={inv.token} className="flex items-center gap-2 text-sm">
+                <span className="min-w-0 flex-1 truncate text-fg-secondary">{inv.email}</span>
+                <span className="shrink-0 rounded bg-surface-elevated px-1.5 py-0.5 text-[10px] text-fg-tertiary">
+                  {inv.role}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCancelInvitation(inv.token)}
+                  disabled={cancellingToken === inv.token}
+                  className="shrink-0 rounded px-2 py-0.5 text-[11px] text-priority-p1 hover:bg-priority-p1/10 disabled:opacity-50"
+                >
+                  {cancellingToken === inv.token ? "취소 중…" : "취소"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {/* 이번 세션에서 초대한 목록 */}
       {invitedList.length > 0 ? (

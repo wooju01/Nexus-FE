@@ -86,6 +86,14 @@ export function WorkspaceForm() {
       >
         {isSubmitting ? "생성 중..." : "워크스페이스 만들기"}
       </Button>
+
+      <button
+        type="button"
+        onClick={() => router.push("/complete")}
+        className="w-full text-center text-sm text-fg-tertiary hover:text-fg-secondary"
+      >
+        건너뛰기
+      </button>
     </form>
   );
 }
