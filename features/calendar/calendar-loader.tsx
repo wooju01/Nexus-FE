@@ -10,8 +10,8 @@ import {
   listCalendarEvents,
   getCalendarEventById,
 } from "@/lib/api/calendar";
-import { getWorkspacesApi } from "@/lib/api/workspace";
 import { getAccessToken } from "@/lib/auth/tokens";
+import { useWorkspace } from "@/features/workspace/workspace-provider";
 import { addMonths, toDateKey } from "./calendar-utils";
 
 import type { CalendarEvent } from "@/types/domain";
@@ -40,6 +40,7 @@ export function CalendarLoader({
   selectedEventId,
 }: CalendarLoaderProps) {
   const router = useRouter();
+  const { currentWorkspace } = useWorkspace();
 
   // 렌더에 쓸 viewMonth.
   const viewMonth = new Date(viewMonthISO);
@@ -50,7 +51,7 @@ export function CalendarLoader({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(
     undefined,
   );
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const workspaceId = currentWorkspace?.id ?? null;
 
   // 모달 state.
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,23 +70,18 @@ export function CalendarLoader({
         if (!cancelled) setLoadState("unauthenticated");
         return;
       }
+      if (!currentWorkspace) {
+        if (!cancelled) setLoadState("error");
+        return;
+      }
 
       try {
-        // 1) 현재 사용자의 첫 워크스페이스 id 잡기.
-        const workspaces = await getWorkspacesApi(accessToken);
-        if (cancelled) return;
-        if (workspaces.length === 0) {
-          setLoadState("error");
-          setLoadError("속한 워크스페이스가 없습니다.");
-          return;
-        }
-        const wsId = workspaces[0].id;
-        setWorkspaceId(wsId);
+        const wsId = currentWorkspace.id;
 
-        // 2) viewMonth 기준 6주(±1주) 범위 events fetch.
+        // viewMonth 기준 6주(±1주) 범위 events fetch.
         const { from, to } = computeRange(month);
 
-        // 3) 선택된 이벤트는 별도 endpoint 로 (만료/삭제된 id 시 null).
+        // 선택된 이벤트는 별도 endpoint 로 (만료/삭제된 id 시 null).
         const [list, picked] = await Promise.all([
           listCalendarEvents({ workspaceId: wsId, from, to }),
           selectedEventId
@@ -112,7 +108,7 @@ export function CalendarLoader({
     return () => {
       cancelled = true;
     };
-  }, [viewMonthISO, selectedEventId]);
+  }, [viewMonthISO, selectedEventId, currentWorkspace]);
 
   /**
    * 생성/수정 모달 submit 성공 콜백.

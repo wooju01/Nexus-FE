@@ -121,7 +121,9 @@ export default function MyWeekPage() {
       workspaceId: currentWorkspace.id,
       from: start.toISOString(),
       to: end.toISOString(),
-    }).catch(() => [] as CalendarEvent[]);
+    })
+      .then((all) => all.filter((e) => e.participants.some((p) => p.userId === user.id)))
+      .catch(() => [] as CalendarEvent[]);
 
     Promise.all([tasksPromise, eventsPromise])
       .then(([myTasks, calEvents]) => {
