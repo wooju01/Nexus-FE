@@ -22,6 +22,7 @@ import { getUnreadSummaryApi } from "@/lib/api/workspace";
 import { getSocket } from "@/lib/ws/socket";
 import { cn } from "@/lib/utils/cn";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
+import { useAppShell } from "@/components/app-shell/app-shell-context";
 import { InviteModal } from "@/features/invitation/invite-modal";
 import { DmStartModal } from "@/features/dm/dm-start-modal";
 import { CreateWorkspaceModal } from "@/features/workspace/create-workspace-modal";
@@ -31,6 +32,21 @@ import { SidebarStarredSection } from "./sidebar-starred-section";
 import { SidebarChannelList } from "./sidebar-channel-list";
 import { SidebarProjectList } from "./sidebar-project-list";
 import { SidebarDmList } from "./sidebar-dm-list";
+
+function RoleBadge({ role }: { role?: "OWNER" | "ADMIN" | "MEMBER" }) {
+  if (!role) return null;
+  const styles = {
+    OWNER: "bg-yellow-500/15 text-yellow-400",
+    ADMIN: "bg-accent/15 text-accent",
+    MEMBER: "bg-surface-elevated text-fg-tertiary",
+  };
+  const labels = { OWNER: "Owner", ADMIN: "Admin", MEMBER: "Member" };
+  return (
+    <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium", styles[role])}>
+      {labels[role]}
+    </span>
+  );
+}
 
 function hiddenDmKey(userId: string) {
   return `nexus:hidden-dms:${userId}`;
@@ -60,6 +76,7 @@ function removeHiddenDm(userId: string, dmId: string) {
 export function Sidebar() {
   const pathname = usePathname();
   const { currentWorkspace } = useWorkspace();
+  const { isMembersPanelOpen, toggleMembersPanel } = useAppShell();
   const wsId = currentWorkspace?.id ?? "";
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -223,7 +240,13 @@ export function Sidebar() {
       aria-label="사이드바"
       className="flex w-60 shrink-0 flex-col border-r border-border-subtle bg-surface-subtle"
     >
-      <div className="px-3 pb-2 pt-3">
+      <div className="px-3 pb-2 pt-3 space-y-2">
+        {currentWorkspace ? (
+          <div className="flex items-center justify-between px-1">
+            <span className="truncate text-xs font-medium text-fg-secondary">{currentWorkspace.name}</span>
+            <RoleBadge role={currentWorkspace.role} />
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => setIsCreateWorkspaceOpen(true)}
@@ -289,13 +312,26 @@ export function Sidebar() {
           />
         </nav>
 
-      <div className="border-t border-border-subtle p-3">
+      <div className="border-t border-border-subtle p-3 space-y-0.5">
+        <button
+          type="button"
+          onClick={toggleMembersPanel}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+            isMembersPanelOpen
+              ? "bg-surface-elevated text-fg-primary"
+              : "text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary",
+          )}
+        >
+          <PeopleIcon className="size-4" />
+          <span>멤버 보기</span>
+        </button>
         <button
           type="button"
           onClick={() => setIsInviteModalOpen(true)}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary"
         >
-          <PeopleIcon className="size-4" />
+          <PlusIcon className="size-4" />
           <span>Invite teammates</span>
         </button>
       </div>

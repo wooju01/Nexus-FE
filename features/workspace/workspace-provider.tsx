@@ -9,6 +9,7 @@ type Workspace = {
   name: string;
   description: string | null;
   iconUrl: string | null;
+  role?: "OWNER" | "ADMIN" | "MEMBER";
 };
 
 type WorkspaceContextValue = {

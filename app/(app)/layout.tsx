@@ -4,6 +4,7 @@ import { LeftRail } from "@/components/app-shell/left-rail";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { TopBar } from "@/components/app-shell/top-bar";
 import { AppShellProvider } from "@/components/app-shell/app-shell-context";
+import { MembersPanelSlot } from "@/components/app-shell/members-panel-slot";
 import { UserProvider } from "@/features/auth/user-provider";
 import { WorkspaceProvider } from "@/features/workspace/workspace-provider";
 
@@ -24,6 +25,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex min-h-0 flex-1">
               <LeftRail />
               <Sidebar />
+              <MembersPanelSlot />
               <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
             </div>
           </div>
