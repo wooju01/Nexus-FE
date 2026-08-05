@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { LandingCTA } from "@/components/landing/cta";
+import { LandingFeatures } from "@/components/landing/features";
+import { LandingFooter } from "@/components/landing/footer";
+import { LandingHero } from "@/components/landing/hero";
+import { LandingNav } from "@/components/landing/nav";
+import { LandingShowcase } from "@/components/landing/showcase";
 import { refreshApi, getProfileApi } from "@/lib/api/auth";
 import { getWorkspacesApi } from "@/lib/api/workspace";
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "@/lib/auth/tokens";
 
 export default function RootPage() {
   const router = useRouter();
+  // null = 확인 중, true = 로그인됨(리다이렉트), false = 미로그인(랜딩 표시)
+  const [authChecked, setAuthChecked] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function resolveDestination() {
@@ -16,11 +24,10 @@ export default function RootPage() {
       const refreshToken = getRefreshToken();
 
       if (!accessToken && !refreshToken) {
-        router.replace("/login");
+        setAuthChecked(false);
         return;
       }
 
-      // access token이 있으면 유효성 확인
       if (accessToken) {
         try {
           await getProfileApi(accessToken);
@@ -28,11 +35,10 @@ export default function RootPage() {
           router.replace(workspaces.length > 0 ? "/dashboard" : "/profile");
           return;
         } catch {
-          // 만료됐을 가능성 → refresh 시도
+          // 만료 → refresh 시도
         }
       }
 
-      // refresh token으로 갱신
       if (refreshToken) {
         try {
           const tokens = await refreshApi(refreshToken);
@@ -45,18 +51,32 @@ export default function RootPage() {
         }
       }
 
-      router.replace("/login");
+      setAuthChecked(false);
     }
 
     resolveDestination();
   }, [router]);
 
-  return (
-    <div className="flex min-h-dvh items-center justify-center bg-surface-base">
-      <div className="flex flex-col items-center gap-3">
+  // 토큰 확인 중
+  if (authChecked === null) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-surface-base">
         <div className="size-8 animate-spin rounded-full border-2 border-border-subtle border-t-accent" />
-        <p className="text-sm text-fg-tertiary">불러오는 중…</p>
       </div>
+    );
+  }
+
+  // 미로그인 → 랜딩 페이지
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <LandingNav />
+      <main className="flex-1">
+        <LandingHero />
+        <LandingShowcase />
+        <LandingFeatures />
+        <LandingCTA />
+      </main>
+      <LandingFooter />
     </div>
   );
 }

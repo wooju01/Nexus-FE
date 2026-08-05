@@ -83,17 +83,33 @@ export function InboxList() {
     if (!token) return;
 
     getNotificationsApi()
-      .then(({ items }) => setNotifications(items))
+      .then(({ items }) => setNotifications(items.filter((n) => !n.isRead)))
       .catch(console.error)
       .finally(() => setLoading(false));
+  }, []);
+
+  // 다른 패널/페이지에서 읽음 처리 시 동기화
+  useEffect(() => {
+    function onRead(e: Event) {
+      const { id } = (e as CustomEvent<{ id: string }>).detail;
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    }
+    function onReadAll() {
+      setNotifications([]);
+    }
+    window.addEventListener("nexus:notification-read", onRead);
+    window.addEventListener("nexus:notification-read-all", onReadAll);
+    return () => {
+      window.removeEventListener("nexus:notification-read", onRead);
+      window.removeEventListener("nexus:notification-read-all", onReadAll);
+    };
   }, []);
 
   async function handleClick(n: Notification) {
     if (!n.isRead) {
       await markAsReadApi(n.id).catch(console.error);
-      setNotifications((prev) =>
-        prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
-      );
+      window.dispatchEvent(new CustomEvent("nexus:notification-read", { detail: { id: n.id } }));
+      setNotifications((prev) => prev.filter((item) => item.id !== n.id));
     }
     if (!n.linkUrl) return;
     if (n.type === "DM_RECEIVED") {

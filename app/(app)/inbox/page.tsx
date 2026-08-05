@@ -90,6 +90,7 @@ export default function InboxPage() {
   async function handleClick(n: Notification) {
     if (!n.isRead) {
       await markAsReadApi(n.id).catch(console.error);
+      window.dispatchEvent(new CustomEvent("nexus:notification-read", { detail: { id: n.id } }));
       updateNotifications(
         notifications.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)),
       );
@@ -105,6 +106,7 @@ export default function InboxPage() {
 
   async function handleReadAll() {
     await markAllAsReadApi().catch(console.error);
+    window.dispatchEvent(new CustomEvent("nexus:notification-read-all"));
     updateNotifications(notifications.map((n) => ({ ...n, isRead: true })));
   }
 
