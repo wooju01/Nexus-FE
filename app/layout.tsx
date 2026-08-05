@@ -19,6 +19,19 @@ export const metadata: Metadata = {
   title: "Nexus — Chat, tasks, and docs. Connected.",
   description:
     "팀의 대화·작업·문서를 하나로 연결하는 실시간 협업 대시보드. 10~200명 규모의 프로덕트·엔지니어링·디자인 팀을 위한 단일 홈.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Nexus",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d10" },
+    { media: "(prefers-color-scheme: light)", color: "#3b82f6" },
+  ],
 };
 
 type RootLayoutProps = Readonly<{ children: React.ReactNode }>;

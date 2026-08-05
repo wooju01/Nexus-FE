@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/app-shell/sidebar";
 import { TopBar } from "@/components/app-shell/top-bar";
 import { AppShellProvider } from "@/components/app-shell/app-shell-context";
 import { MembersPanelSlot } from "@/components/app-shell/members-panel-slot";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { UserProvider } from "@/features/auth/user-provider";
 import { WorkspaceProvider } from "@/features/workspace/workspace-provider";
 
@@ -17,20 +18,22 @@ import { WorkspaceProvider } from "@/features/workspace/workspace-provider";
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <UserProvider>
-      <WorkspaceProvider>
-        <AppShellProvider>
-          <div className="flex h-dvh flex-col bg-surface-base text-fg-primary">
-            <TopBar />
-            <div className="flex min-h-0 flex-1">
-              <LeftRail />
-              <Sidebar />
-              <MembersPanelSlot />
-              <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+    <AuthGuard>
+      <UserProvider>
+        <WorkspaceProvider>
+          <AppShellProvider>
+            <div className="flex h-dvh flex-col bg-surface-base text-fg-primary">
+              <TopBar />
+              <div className="flex min-h-0 flex-1">
+                <LeftRail />
+                <Sidebar />
+                <MembersPanelSlot />
+                <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+              </div>
             </div>
-          </div>
-        </AppShellProvider>
-      </WorkspaceProvider>
-    </UserProvider>
+          </AppShellProvider>
+        </WorkspaceProvider>
+      </UserProvider>
+    </AuthGuard>
   );
 }
