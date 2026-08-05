@@ -1,25 +1,62 @@
-import { LandingCTA } from "@/components/landing/cta";
-import { LandingFeatures } from "@/components/landing/features";
-import { LandingFooter } from "@/components/landing/footer";
-import { LandingHero } from "@/components/landing/hero";
-import { LandingNav } from "@/components/landing/nav";
-import { LandingShowcase } from "@/components/landing/showcase";
+"use client";
 
-/**
- * 마케팅 랜딩 페이지 (Server Component).
- * 섹션별로 파일을 분리해 단일 파일이 비대해지지 않도록 유지.
- */
-export default function HomePage() {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+import { refreshApi, getProfileApi } from "@/lib/api/auth";
+import { getWorkspacesApi } from "@/lib/api/workspace";
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "@/lib/auth/tokens";
+
+export default function RootPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    async function resolveDestination() {
+      const accessToken = getAccessToken();
+      const refreshToken = getRefreshToken();
+
+      if (!accessToken && !refreshToken) {
+        router.replace("/login");
+        return;
+      }
+
+      // access token이 있으면 유효성 확인
+      if (accessToken) {
+        try {
+          await getProfileApi(accessToken);
+          const workspaces = await getWorkspacesApi(accessToken);
+          router.replace(workspaces.length > 0 ? "/dashboard" : "/profile");
+          return;
+        } catch {
+          // 만료됐을 가능성 → refresh 시도
+        }
+      }
+
+      // refresh token으로 갱신
+      if (refreshToken) {
+        try {
+          const tokens = await refreshApi(refreshToken);
+          setTokens(tokens.accessToken, tokens.refreshToken);
+          const workspaces = await getWorkspacesApi(tokens.accessToken);
+          router.replace(workspaces.length > 0 ? "/dashboard" : "/profile");
+          return;
+        } catch {
+          clearTokens();
+        }
+      }
+
+      router.replace("/login");
+    }
+
+    resolveDestination();
+  }, [router]);
+
   return (
-    <div className="flex min-h-dvh flex-col">
-      <LandingNav />
-      <main className="flex-1">
-        <LandingHero />
-        <LandingShowcase />
-        <LandingFeatures />
-        <LandingCTA />
-      </main>
-      <LandingFooter />
+    <div className="flex min-h-dvh items-center justify-center bg-surface-base">
+      <div className="flex flex-col items-center gap-3">
+        <div className="size-8 animate-spin rounded-full border-2 border-border-subtle border-t-accent" />
+        <p className="text-sm text-fg-tertiary">불러오는 중…</p>
+      </div>
     </div>
   );
 }

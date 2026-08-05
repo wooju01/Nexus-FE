@@ -47,7 +47,8 @@ export function MembersPanel({ onClose }: Props) {
   const { user: me } = useUser();
 
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadedWorkspaceId, setLoadedWorkspaceId] = useState<string | null>(null);
+  const isLoading = currentWorkspace ? loadedWorkspaceId !== currentWorkspace.id : true;
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [startingDmId, setStartingDmId] = useState<string | null>(null);
 
@@ -57,10 +58,10 @@ export function MembersPanel({ onClose }: Props) {
 
   useEffect(() => {
     if (!currentWorkspace) return;
-    setIsLoading(true);
+    const workspaceId = currentWorkspace.id;
 
     Promise.all([
-      getMembersApi(currentWorkspace.id),
+      getMembersApi(workspaceId),
       getSentFriendRequests().catch(() => []),
       getFriends().catch(() => []),
     ]).then(([memberList, sentRequests, friends]) => {
@@ -76,7 +77,8 @@ export function MembersPanel({ onClose }: Props) {
         map[f.user.id] = { state: "friend" };
       }
       setFriendMap(map);
-    }).catch(console.error).finally(() => setIsLoading(false));
+      setLoadedWorkspaceId(workspaceId);
+    }).catch(console.error);
   }, [currentWorkspace]);
 
   async function handleStartDm(targetUserId: string) {
