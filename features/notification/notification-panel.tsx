@@ -53,6 +53,7 @@ export function NotificationPanel({
       const token = getAccessToken();
       if (token) {
         await markAsReadApi(n.id).catch(console.error);
+        window.dispatchEvent(new CustomEvent("nexus:notification-read", { detail: { id: n.id } }));
         onRead(n.id);
       }
     }
@@ -66,6 +67,7 @@ export function NotificationPanel({
     const token = getAccessToken();
     if (token) {
       await markAllAsReadApi().catch(console.error);
+      window.dispatchEvent(new CustomEvent("nexus:notification-read-all"));
       onReadAll();
     }
   }
