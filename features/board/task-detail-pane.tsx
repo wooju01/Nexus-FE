@@ -62,7 +62,7 @@ export function TaskDetailPane({ task, closeHref, onTaskUpdated, onTaskDeleted }
   return (
     <aside
       aria-label={`NX-${localTask.number} 상세`}
-      className="flex w-104 shrink-0 flex-col border-l border-border-subtle bg-surface-base"
+      className="fixed inset-x-0 bottom-0 top-14 z-30 flex w-full flex-col border-l border-border-subtle bg-surface-base md:static md:z-auto md:shrink-0 md:w-104"
     >
       {/* 헤더: 태스크 번호 + 도구 버튼들 */}
       <header className="flex items-center justify-between border-b border-border-subtle px-5 py-3">

@@ -73,11 +73,11 @@ export function DmStartModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
-        className="w-96 rounded-xl border border-border-subtle bg-surface-base shadow-2xl"
+        className="w-full max-w-96 rounded-xl border border-border-subtle bg-surface-base shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">

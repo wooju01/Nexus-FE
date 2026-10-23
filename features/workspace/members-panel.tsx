@@ -126,7 +126,7 @@ export function MembersPanel({ onClose }: Props) {
   const regularMembers = members.filter((m) => m.role === "MEMBER" || m.role === "GUEST");
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-l border-border-subtle bg-surface-subtle">
+    <aside className="fixed inset-x-0 bottom-0 top-14 z-30 flex w-full flex-col border-l border-border-subtle bg-surface-subtle md:static md:z-auto md:w-60 md:shrink-0">
       {/* 헤더 */}
       <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-4 py-3">
         <div className="flex items-center gap-2">

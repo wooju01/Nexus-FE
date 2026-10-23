@@ -31,14 +31,14 @@ export function ChannelHeader({
     : undefined;
 
   return (
-    <header className="flex shrink-0 items-center gap-4 border-b border-border-subtle bg-surface-base px-5 py-3">
+    <header className="flex shrink-0 items-center gap-2 border-b border-border-subtle bg-surface-base px-3 py-3 md:gap-4 md:px-5">
       <div className="flex min-w-0 items-center gap-2">
         <HashIcon className="size-4 text-fg-tertiary" />
         <h1 className="truncate text-base font-semibold text-fg-primary">
           {channel.name}
         </h1>
         {channel.description ? (
-          <span className="truncate text-sm text-fg-tertiary">
+          <span className="hidden truncate text-sm text-fg-tertiary md:inline">
             <span aria-hidden="true" className="mx-2">
               |
             </span>
@@ -47,7 +47,7 @@ export function ChannelHeader({
         ) : null}
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-3">
         <div
           className="flex items-center gap-2"
           aria-label={`${memberCount}명의 멤버`}
@@ -65,7 +65,7 @@ export function ChannelHeader({
               />
             ))}
           </div>
-          <span className="text-xs font-medium text-fg-secondary">
+          <span className="hidden text-xs font-medium text-fg-secondary sm:inline">
             {memberCount} members
           </span>
         </div>
@@ -107,7 +107,7 @@ function HeaderAction({
     return (
       <Link href={href} className={className}>
         {icon}
-        {children}
+        <span className="sr-only md:not-sr-only">{children}</span>
       </Link>
     );
   }
@@ -115,7 +115,7 @@ function HeaderAction({
   return (
     <button type="button" className={className} title="준비 중">
       {icon}
-      {children}
+      <span className="sr-only md:not-sr-only">{children}</span>
     </button>
   );
 }

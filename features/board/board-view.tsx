@@ -394,14 +394,14 @@ export function BoardView({ project }: BoardViewProps) {
     >
     <div className="flex h-full min-h-0 flex-1">
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3 md:px-6 md:py-4">
           <div className="flex min-w-0 shrink items-center gap-3">
             <h1 className="truncate text-lg font-semibold text-fg-primary">{project.name}</h1>
             <span aria-hidden="true" className="shrink-0 text-sm text-fg-tertiary">/</span>
             <span className="shrink-0 text-sm text-fg-secondary">Board</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <BoardSearch initialValue={query} />
             <button
               type="button"

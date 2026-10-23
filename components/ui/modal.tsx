@@ -51,7 +51,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       ref={dialogRef}
       onCancel={handleCancel}
       onClick={handleBackdropClick}
-      className="m-auto max-w-md w-full bg-transparent p-0 backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+      className="m-auto w-[calc(100%-2rem)] max-w-md bg-transparent p-0 backdrop:bg-black/60 backdrop:backdrop-blur-sm"
     >
       <div className="animate-step-in rounded-2xl border border-border-subtle bg-surface-elevated p-6 shadow-2xl shadow-black/30">
         {/* 헤더 */}
