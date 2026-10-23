@@ -154,8 +154,8 @@ export function SidebarProjectList({ wsId, pathname, projects, onProjectsChange,
 
       {/* 삭제 확인 다이얼로그 */}
       {confirmDeleteId ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-80 rounded-xl border border-border-subtle bg-surface-elevated p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-80 rounded-xl border border-border-subtle bg-surface-elevated p-5 shadow-xl">
             <p className="font-semibold text-fg-primary">프로젝트를 삭제할까요?</p>
             <p className="mt-1.5 text-sm text-fg-secondary">
               연결된 채널과 모든 데이터가 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.

@@ -156,7 +156,7 @@ export default function InboxPage() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
+    <div className="mx-auto max-w-2xl px-4 py-6 md:px-6 md:py-8">
       {/* 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -191,7 +191,7 @@ export default function InboxPage() {
       </div>
 
       {/* 필터 탭 */}
-      <div className="mb-4 flex gap-1 border-b border-border-subtle">
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border-subtle">
         {FILTERS.map((f) => (
           <button
             key={f.value}

@@ -269,6 +269,14 @@ export function PinIcon(props: IconProps) {
   );
 }
 
+export function MenuIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </IconBase>
+  );
+}
+
 export function XIcon(props: IconProps) {
   return (
     <IconBase {...props}>

@@ -171,7 +171,7 @@ export default function MyWeekPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* 헤더 */}
-      <div className="shrink-0 border-b border-border-subtle px-6 py-4">
+      <div className="shrink-0 border-b border-border-subtle px-4 py-4 md:px-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-fg-primary">My Week</h1>

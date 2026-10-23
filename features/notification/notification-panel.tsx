@@ -75,7 +75,7 @@ export function NotificationPanel({
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-border-subtle bg-surface-base shadow-2xl">
+    <div className="absolute right-0 top-11 z-50 w-[calc(100vw-1rem)] max-w-80 rounded-xl border border-border-subtle bg-surface-base shadow-2xl">
       <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
         <h2 className="text-sm font-semibold text-fg-primary">알림</h2>
         {unreadCount > 0 ? (

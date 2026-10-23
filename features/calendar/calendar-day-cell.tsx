@@ -32,7 +32,7 @@ export function CalendarDayCell({
   return (
     <div
       className={cn(
-        "flex min-h-[120px] flex-col gap-1 border-b border-r border-border-subtle p-1.5",
+        "flex min-h-[72px] flex-col gap-1 md:min-h-[120px] border-b border-r border-border-subtle p-1.5",
         isOtherMonth && "bg-surface-subtle/50",
       )}
     >

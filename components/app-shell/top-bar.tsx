@@ -7,11 +7,13 @@ import { useRouter } from "next/navigation";
 import {
   CalendarIcon,
   ChevronDownIcon,
+  MenuIcon,
   SparklesIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/ui/avatar";
 import { useUser } from "@/features/auth/user-provider";
 import { useWorkspace } from "@/features/workspace/workspace-provider";
+import { useAppShell } from "@/components/app-shell/app-shell-context";
 import { clearTokens } from "@/lib/auth/tokens";
 import type { Presence } from "@/types/domain";
 import { cn } from "@/lib/utils/cn";
@@ -27,6 +29,7 @@ export function TopBar() {
   const router = useRouter();
   const { user, isLoading } = useUser();
   const { currentWorkspace, workspaces, switchWorkspace } = useWorkspace();
+  const { setSidebarOpen } = useAppShell();
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -78,9 +81,19 @@ export function TopBar() {
   }
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border-subtle bg-surface-base px-4">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border-subtle bg-surface-base px-2 md:gap-4 md:px-4">
+      {/* 모바일 메뉴 (사이드바 드로어 열기) */}
+      <button
+        type="button"
+        onClick={() => setSidebarOpen(true)}
+        aria-label="메뉴 열기"
+        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-surface-elevated hover:text-fg-primary md:hidden"
+      >
+        <MenuIcon />
+      </button>
+
       {/* 워크스페이스 스위처 */}
-      <div className="relative">
+      <div className="relative min-w-0">
         <button
           ref={wsSwitcherButtonRef}
           type="button"
@@ -88,18 +101,18 @@ export function TopBar() {
           aria-label="워크스페이스 전환"
           aria-expanded={isWsSwitcherOpen}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold tracking-tight transition-colors",
+            "flex max-w-full items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold tracking-tight transition-colors",
             isWsSwitcherOpen ? "bg-surface-elevated" : "hover:bg-surface-elevated",
           )}
         >
-          <span className="text-fg-primary">Nexus</span>
-          <span aria-hidden="true" className="text-fg-tertiary">/</span>
-          <span className="text-fg-primary">
+          <span className="hidden text-fg-primary sm:inline">Nexus</span>
+          <span aria-hidden="true" className="hidden text-fg-tertiary sm:inline">/</span>
+          <span className="truncate whitespace-nowrap text-fg-primary">
             {currentWorkspace?.name ?? "워크스페이스"}
           </span>
           <ChevronDownIcon
             className={cn(
-              "size-3.5 text-fg-tertiary transition-transform",
+              "size-3.5 shrink-0 text-fg-tertiary transition-transform",
               isWsSwitcherOpen && "rotate-180",
             )}
           />
@@ -150,7 +163,7 @@ export function TopBar() {
 
       <div className="flex flex-1" />
 
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           aria-label="AI 어시스트"
@@ -168,7 +181,7 @@ export function TopBar() {
         </Link>
 
         {/* 유저 메뉴 */}
-        <div className="relative ml-2">
+        <div className="relative md:ml-2">
           <button
             ref={userButtonRef}
             type="button"
@@ -189,12 +202,12 @@ export function TopBar() {
               size="md"
               name={user?.name ?? ""}
             />
-            <span className="text-sm font-medium text-fg-primary" suppressHydrationWarning>
+            <span className="hidden whitespace-nowrap text-sm font-medium text-fg-primary md:inline" suppressHydrationWarning>
               {isLoading ? "..." : (user?.name ?? "사용자")}
             </span>
             <ChevronDownIcon
               className={cn(
-                "size-3.5 text-fg-tertiary transition-transform",
+                "hidden size-3.5 text-fg-tertiary transition-transform md:block",
                 isUserMenuOpen && "rotate-180",
               )}
             />

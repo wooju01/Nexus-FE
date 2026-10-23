@@ -1,11 +1,10 @@
 import { Avatar } from "@/components/ui/avatar";
 import { PriorityPill } from "@/components/ui/priority-pill";
-import { Button } from "@/components/ui/button";
 import {
   AtSignIcon,
   ReplyIcon,
   BoardIcon,
-  CheckCircleIcon,
+  ClockIcon,
 } from "@/components/icons";
 
 /**
@@ -28,7 +27,7 @@ export function ShowcaseInbox() {
             Threads
           </span>
           <span className="rounded-md px-2 py-0.5 text-fg-tertiary">
-            Approvals
+            Due Soon
           </span>
         </div>
       </div>
@@ -80,25 +79,21 @@ export function ShowcaseInbox() {
 
         <InboxItem
           icon={
-            <CheckCircleIcon
+            <ClockIcon
               width={16}
               height={16}
               className="text-fg-secondary"
             />
           }
+          unread
         >
           <div className="flex items-center gap-2">
             <p className="text-sm text-fg-secondary">
-              <span className="font-medium text-fg-primary">
-                디자인 시안 v3
-              </span>{" "}
-              승인 요청
+              <span className="font-medium text-fg-primary">NX-158</span>
+              의 마감이 오늘입니다
             </p>
-            <span className="ml-auto">
-              <Button variant="primary" size="sm">
-                승인
-              </Button>
-            </span>
+            <PriorityPill priority="P1" />
+            <span className="ml-auto text-xs text-fg-tertiary">3시간 전</span>
           </div>
         </InboxItem>
       </div>

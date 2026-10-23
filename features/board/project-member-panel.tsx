@@ -153,7 +153,7 @@ export function ProjectMemberPanel({ projectId, workspaceId, onClose }: Props) {
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full z-50 mt-1 w-80 rounded-xl border border-border-subtle bg-surface-elevated shadow-xl"
+      className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-1rem)] max-w-80 rounded-xl border border-border-subtle bg-surface-elevated shadow-xl"
       role="dialog"
       aria-label="프로젝트 멤버 관리"
     >

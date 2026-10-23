@@ -76,7 +76,7 @@ function removeHiddenDm(userId: string, dmId: string) {
 export function Sidebar() {
   const pathname = usePathname();
   const { currentWorkspace } = useWorkspace();
-  const { isMembersPanelOpen, toggleMembersPanel } = useAppShell();
+  const { isMembersPanelOpen, toggleMembersPanel, setSidebarOpen } = useAppShell();
   const wsId = currentWorkspace?.id ?? "";
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -315,7 +315,10 @@ export function Sidebar() {
       <div className="border-t border-border-subtle p-3 space-y-0.5">
         <button
           type="button"
-          onClick={toggleMembersPanel}
+          onClick={() => {
+            toggleMembersPanel();
+            setSidebarOpen(false); // 모바일: 드로어를 닫아야 패널이 보인다
+          }}
           className={cn(
             "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
             isMembersPanelOpen
